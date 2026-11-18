@@ -1,0 +1,1437 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <base target="_top">
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self' 'sha256-7QLzpYxN2i/LvazQmuyV30yD/ftZ7fx3uQOCnc2yIqk=' https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js; connect-src https://script.google.com https://script.googleusercontent.com; img-src 'self' blob: data:; media-src 'self' blob: mediastream:; style-src 'self' 'unsafe-inline'; font-src 'self' data:; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="referrer" content="no-referrer">
+  <!-- built from webapp/index.html sha256 b612c00a61fe3b88c81ead91b4220226b64a30b75621ce11e9fe62a7217043e3 -->
+  <script src="bridge.js"></script>
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+  <title>사무실 재고</title>
+  <style>
+    :root{--ink:#17251f;--muted:#66756e;--line:#dce5df;--wash:#f4f7f5;--green:#176b4d;--green-soft:#e5f3ed;--blue:#225ea8;--blue-soft:#e8f1fb;--red:#a33a32;--red-soft:#f9e8e6;--amber:#8b5d09;--amber-soft:#fff3d6;--shadow:0 10px 30px rgba(23,60,45,.09)}
+    *{box-sizing:border-box}
+    body{margin:0;color:var(--ink);background:#eef4f0;font-family:Pretendard,"Noto Sans KR",system-ui,sans-serif;font-size:16px;line-height:1.5}
+    button,input,select{font:inherit}
+    input,select,textarea{font-size:16px}
+    button{touch-action:manipulation;cursor:pointer}
+    button:disabled{opacity:.5;cursor:not-allowed}
+    h1{margin:0;font-size:24px;letter-spacing:-.03em}
+    h2{margin:0;font-size:21px}
+    h3{margin:0;font-size:18px}
+    .hidden{display:none!important}
+    .wrap{max-width:1180px;margin:auto;padding:12px 12px 56px}
+    .top{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+    .top h1{flex:1;min-width:0}
+    .back{min-height:48px;padding:0 14px;border:1px solid var(--line);border-radius:12px;background:#fff;font-weight:800}
+    .load-state{color:var(--muted);font-size:13px;text-align:right}
+    .card{margin-top:12px;padding:16px;border-radius:18px;background:#fff;box-shadow:var(--shadow)}
+    .hint{margin:6px 2px 0;color:var(--muted);font-size:14px}
+    .empty{padding:18px;border:1px dashed var(--line);border-radius:13px;text-align:center;color:var(--muted)}
+    .label{display:block;margin-bottom:6px;color:#344940;font-size:15px;font-weight:800}
+
+    /* 스캔 줄: 스캐너 입력칸 + 카메라 */
+    .scan-bar{position:sticky;top:0;z-index:5;padding:10px;border-radius:16px;background:#fff;box-shadow:var(--shadow)}
+    .scan-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+    #search{width:100%;height:56px;padding:0 14px;border:2px solid #bed3c8;border-radius:13px;background:#fff;color:var(--ink);font-size:17px;outline:none}
+    #search:focus{border-color:var(--green);box-shadow:0 0 0 4px rgba(23,107,77,.11)}
+    #search:disabled{background:#f1f3f2}
+    .camera-open{height:56px;padding:0 16px;border:0;border-radius:13px;background:var(--green);color:#fff;font-weight:900;white-space:nowrap}
+    .camera{margin-top:8px}
+    .camera video{display:block;width:100%;max-height:34vh;border-radius:12px;background:#0d1512;object-fit:cover}
+    .camera-tools{display:flex;flex-wrap:wrap;gap:8px;align-items:center;margin-top:8px}
+    .camera-tools button{min-height:46px;padding:0 13px;border:1px solid var(--line);border-radius:11px;background:#fff;font-weight:800}
+    .switch{display:inline-flex;align-items:center;gap:8px;min-height:46px;padding:0 12px;border:1px solid var(--line);border-radius:11px;background:#fff;font-weight:800}
+    .switch input{width:20px;height:20px;margin:0;accent-color:var(--green)}
+    .camera-message{margin:8px 2px 0;color:var(--amber);font-size:14px;font-weight:700}
+    .status{display:none;margin-top:8px;padding:11px 13px;border-radius:12px;font-size:16px;font-weight:700;white-space:pre-line}
+    .status.show{display:block}
+    .status.ok{background:var(--green-soft);color:#12563e}
+    .status.warn{background:var(--amber-soft);color:var(--amber)}
+    .status.error{background:var(--red-soft);color:var(--red)}
+    .results{display:grid;gap:8px;margin-top:8px;max-height:320px;overflow:auto}
+    .result{width:100%;padding:13px;text-align:left;border:1px solid var(--line);border-radius:13px;background:#fff;color:var(--ink)}
+    .result-top{display:flex;justify-content:space-between;gap:10px}
+    .result-name{font-weight:850;overflow-wrap:anywhere}
+    .result-option{display:block;color:#344940;font-size:14px}
+    .result-badges{display:flex;gap:6px;align-items:flex-start;white-space:nowrap}
+    .pill{padding:3px 9px;border-radius:999px;font-size:13px;font-weight:900}
+    .pill.stock{background:var(--green-soft);color:var(--green)}
+    .pill.zone{background:var(--blue-soft);color:var(--blue)}
+    .pill.block{background:var(--red-soft);color:var(--red)}
+    .result-meta{display:block;margin-top:4px;color:var(--muted);font-size:13px;word-break:break-all}
+
+    /* 첫 화면 */
+    .home-grid{display:grid;gap:12px;margin-top:12px}
+    .home-button{display:block;width:100%;min-height:104px;padding:18px;border:0;border-radius:18px;background:#fff;box-shadow:var(--shadow);text-align:left;color:var(--ink)}
+    .home-button strong{display:block;font-size:24px;letter-spacing:-.03em}
+    .home-button span{display:block;margin-top:4px;color:var(--muted);font-size:15px}
+    .home-button.zone{border-left:8px solid var(--blue)}
+    .home-button.count{border-left:8px solid var(--green)}
+    .home-button.find{border-left:8px solid var(--amber)}
+    .home-notes{display:grid;gap:8px;margin-top:12px}
+    .note{padding:12px 14px;border-radius:13px;background:var(--amber-soft);color:#5f4107;font-weight:750}
+
+    /* 공통 줄 */
+    .rows{display:grid;gap:8px;margin-top:10px}
+    .row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:13px;background:#fff}
+    .row-name{font-weight:850;overflow-wrap:anywhere}
+    .row-sub{color:var(--muted);font-size:14px;overflow-wrap:anywhere}
+    .row-button{min-height:48px;padding:0 14px;border:0;border-radius:11px;background:var(--blue);color:#fff;font-weight:900;white-space:nowrap}
+    .row-button.plain{border:1px solid var(--line);background:#fff;color:var(--ink)}
+    .row.placed{background:#f6f9f7}
+    .row.placed .row-name,.row.placed .row-sub{color:var(--muted)}
+    .row .pill{white-space:nowrap}
+    .section-head{display:flex;justify-content:space-between;align-items:baseline;gap:10px}
+    .count-text{color:var(--muted);font-weight:800;font-size:14px}
+    .more{display:block;width:100%;min-height:50px;margin-top:10px;border:1px solid #b9c9c1;border-radius:12px;background:#fff;font-weight:850}
+    .primary{width:100%;min-height:56px;margin-top:12px;border:0;border-radius:14px;background:var(--green);color:#fff;font-size:18px;font-weight:950}
+    .primary.outbound{background:var(--red)}
+    .secondary{width:100%;min-height:52px;margin-top:8px;border:1px solid var(--line);border-radius:14px;background:#fff;font-weight:850}
+    .confirm{margin-top:10px;padding:14px;border:2px solid #e2c677;border-radius:14px;background:var(--amber-soft)}
+    .confirm strong{display:block;font-size:17px}
+    .confirm-actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+    .confirm-actions button{flex:1 1 140px;min-height:52px;padding:8px 14px;border:0;border-radius:11px;font-weight:900}
+    .confirm-actions .go{background:var(--blue);color:#fff}
+    .confirm-actions .danger{background:var(--red);color:#fff}
+    .confirm-actions .cancel{background:#fff;color:var(--ink);border:1px solid var(--line)}
+
+    /* 구역 지정 */
+    .target{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px;border-radius:16px;background:#173b61;color:#fff}
+    .target span{display:block;color:#bcd0e6;font-size:14px;font-weight:750}
+    .target strong{display:block;font-size:40px;line-height:1.1;font-weight:950;letter-spacing:-.03em}
+    .target button{min-height:52px;padding:0 16px;border:0;border-radius:12px;background:#fff;color:#173b61;font-weight:900}
+    .log-state{font-size:13px;font-weight:900}
+    .log-state.saving{color:var(--amber)}
+    .log-state.saved{color:var(--green)}
+    .log-state.failed{color:var(--red)}
+    .log-state.undone{color:var(--muted)}
+
+    /* 구역 고르기 */
+    .picker{position:fixed;inset:0;z-index:20;overflow:auto;padding:14px;background:#eef4f0}
+    .picker-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:10px}
+    .picker-head strong{font-size:22px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+    .chip{min-height:50px;padding:0 16px;border:1px solid #b9cbe0;border-radius:999px;background:var(--blue-soft);color:var(--blue);font-weight:900}
+    .letter-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}
+    .number-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+    .zone-key{min-height:58px;border:1px solid var(--line);border-radius:12px;background:#fff;font-size:19px;font-weight:900}
+    .zone-key small{display:block;color:var(--muted);font-size:12px;font-weight:700}
+    .number-grid .zone-key{min-height:84px;font-size:26px}
+
+    /* 재고 조사 */
+    .progress{margin-top:8px;padding:12px 14px;border-radius:13px;background:#17251f;color:#fff;font-size:17px;font-weight:900}
+    .count-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;padding:12px;border:2px solid var(--line);border-radius:14px;background:#fff}
+    .count-row.matched{border-color:#9fcdb8;background:#f3faf6}
+    .count-row.diff{border-color:#e2c677;background:#fffaf0}
+    .count-row.changed{border-color:#d7867f;background:var(--red-soft)}
+    .count-row.focus{box-shadow:0 0 0 4px rgba(34,94,168,.25)}
+    .count-row.blocked{opacity:.6}
+    .count-ledger{margin-top:2px;font-size:15px;font-weight:800}
+    .count-note{margin-top:2px;color:var(--amber);font-size:14px;font-weight:800}
+    .count-controls{display:grid;grid-template-columns:auto 46px 74px 46px;gap:6px;align-items:center}
+    .count-match{min-height:52px;padding:0 14px;border:0;border-radius:11px;background:var(--green);color:#fff;font-weight:900}
+    .count-step{height:52px;border:1px solid var(--line);border-radius:11px;background:#fff;font-size:22px;font-weight:900}
+    .count-input{width:100%;height:52px;padding:0 6px;border:1px solid #cdd9d2;border-radius:11px;text-align:center;font-size:19px;font-weight:900}
+    .review-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;padding:11px;border:1px solid var(--line);border-radius:11px;background:#fff}
+    .review-row.invalid{border-color:#d7867f;background:var(--red-soft)}
+    .review-change{font-weight:950;white-space:nowrap}
+    .review-warning{margin-top:10px;color:var(--red);font-weight:900}
+    .result-box{margin-top:10px;padding:12px;border-radius:11px;background:var(--wash);white-space:pre-line}
+    .result-box.warn{background:var(--amber-soft);color:var(--amber)}
+
+    /* 상품 찾기 · 입고 · 출고 */
+    .selected-name{font-size:21px;font-weight:950;overflow-wrap:anywhere}
+    .selected-option{margin-top:2px;color:#344940;font-weight:750;overflow-wrap:anywhere}
+    .identity-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px;margin-top:10px}
+    .identity{padding:8px 10px;border:1px solid var(--line);border-radius:10px;min-width:0}
+    .identity span{display:block;color:var(--muted);font-size:12px}
+    .identity strong{display:block;font-size:14px;word-break:break-all}
+    .key-facts{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
+    .key-fact{padding:12px;border-radius:14px;background:#17251f;color:#fff}
+    .key-fact.location{background:#173b61}
+    .key-fact span{color:#b9c9c1;font-size:13px;font-weight:750}
+    .key-value{display:block;font-size:32px;line-height:1.15;font-weight:950;letter-spacing:-.03em}
+    .actions{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:8px;margin-top:12px}
+    .action{min-height:54px;padding:6px;border:1px solid var(--line);border-radius:13px;background:#fff;font-weight:900}
+    .action.active{background:var(--green-soft);color:var(--green);border-color:#7db69e}
+    .action[data-operation="OUTBOUND"].active{background:var(--red-soft);color:var(--red);border-color:#d7928c}
+    .fields{display:grid;grid-template-columns:160px 1fr;gap:12px;margin-top:12px}
+    .field input{width:100%;height:52px;padding:0 13px;border:1px solid #cdd9d2;border-radius:12px;background:#fff;outline:none}
+    .preview{display:flex;justify-content:center;align-items:center;gap:15px;margin-top:12px;padding:12px;background:#17251f;color:#fff;border-radius:13px;font-size:19px;font-weight:900}
+    .arrow{color:#85caae}
+    .batch-row{display:grid;grid-template-columns:minmax(0,1fr) 120px auto;gap:10px;align-items:center;padding:12px;border:1px solid var(--line);border-radius:13px;background:#fff}
+    .batch-after{margin-top:3px;font-size:14px;font-weight:850}
+    .batch-after.invalid{color:var(--red)}
+    .batch-quantity{width:100%;height:52px;padding:0 10px;border:1px solid #cdd9d2;border-radius:11px;text-align:right;font-size:17px}
+    .batch-remove{min-height:52px;padding:0 14px;border:1px solid #d8aaa6;border-radius:11px;background:#fff;color:var(--red);font-weight:900}
+    .toolbar{display:grid;grid-template-columns:minmax(200px,1.5fr) repeat(3,minmax(130px,1fr));gap:9px;margin-top:10px}
+    .toolbar-label{display:block;margin:0 0 4px;color:#43534b;font-size:13px;font-weight:800}
+    .toolbar input,.toolbar select{width:100%;height:52px;padding:0 13px;border:1px solid #cdd9d2;border-radius:12px;background:#fff}
+    .group-toggle{grid-column:1/-1;display:flex;align-items:center;gap:9px;min-height:52px;padding:10px 13px;border:1px solid var(--line);border-radius:12px;background:#fff;font-weight:800}
+    .group-toggle input{width:20px;height:20px;margin:0;accent-color:var(--green)}
+    .table-wrap{margin-top:10px;overflow-x:auto;border:1px solid var(--line);border-radius:14px}
+    table{width:100%;border-collapse:collapse;min-width:810px;background:#fff}
+    th,td{padding:10px 12px;border-bottom:1px solid #edf1ef;text-align:left;font-size:14px;vertical-align:middle}
+    th{background:#f5f8f6;color:#43534b}
+    tbody tr{cursor:pointer}
+    tbody tr:hover{background:#f0f8f4}
+    .table-name{font-weight:800}
+    .table-option{color:var(--muted);font-size:13px}
+    .table-number{text-align:right;font-weight:900;white-space:nowrap}
+    .table-location{color:var(--blue);font-weight:900;white-space:nowrap}
+    .inventory-cards{display:none}
+    .inventory-card{width:100%;min-width:0;padding:14px;border:1px solid var(--line);border-radius:14px;background:#fff;color:var(--ink);text-align:left}
+    .inventory-card-head{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:12px;align-items:start}
+    .inventory-card-name{display:block;font-size:17px;font-weight:900;overflow-wrap:anywhere}
+    .inventory-card-option{display:block;color:var(--muted);font-size:15px;overflow-wrap:anywhere}
+    .inventory-card-stock{padding:6px 9px;border-radius:10px;background:var(--green-soft);color:var(--green);font-size:17px;font-weight:950;white-space:nowrap}
+    .inventory-card-stock.missing{background:var(--amber-soft);color:var(--amber)}
+    .inventory-card-location{display:block;margin-top:10px;font-size:16px;font-weight:900;color:var(--blue)}
+    .inventory-card-meta{display:block;margin-top:5px;color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+    .inventory-groups{display:grid;gap:16px;margin-top:10px}
+    .inventory-group-head{display:flex;justify-content:space-between;gap:12px;align-items:baseline;margin:0 2px 6px}
+    .inventory-group-summary{color:var(--muted);font-size:14px;font-weight:750}
+
+    /* PC: 넓은 화면에서는 첫 화면 버튼을 가로로, 조사 줄을 한 줄로 */
+    @media(min-width:900px){.home-grid{grid-template-columns:repeat(3,1fr)}.wrap{padding:20px 18px 56px}h1{font-size:28px}.camera video{max-height:300px;max-width:520px}.letter-grid{grid-template-columns:repeat(11,minmax(0,1fr))}.number-grid{grid-template-columns:repeat(6,minmax(0,1fr))}.picker{padding:24px max(24px,calc((100vw - 1100px)/2))}}
+    @media(max-width:860px){.toolbar{grid-template-columns:repeat(2,minmax(0,1fr))}.actions{grid-template-columns:repeat(2,minmax(0,1fr))}}
+    @media(max-width:560px){.wrap{padding:8px 8px 48px}.card{padding:13px 11px;border-radius:16px}.identity-grid,.fields,.toolbar{grid-template-columns:1fr}.identity-grid{gap:4px}.identity{display:flex;justify-content:space-between;align-items:baseline;gap:10px;padding:6px 10px}.identity span{flex:none}.identity strong{text-align:right}.key-value{font-size:28px}.confirm-actions button{flex-basis:100%}.group-toggle{grid-column:auto}.count-row{grid-template-columns:1fr}.count-controls{grid-template-columns:minmax(0,1fr) 52px 84px 52px}.batch-row{grid-template-columns:minmax(0,1fr) 100px}.batch-remove{grid-column:1/-1}.review-row{grid-template-columns:1fr}.review-change{white-space:normal}.table-wrap{display:none}.inventory-cards{display:grid;gap:10px;margin-top:10px}.inventory-group-head{align-items:flex-start;flex-direction:column;gap:2px}.target strong{font-size:36px}}
+  </style>
+</head>
+<body>
+  <main class="wrap">
+    <header class="top">
+      <button id="homeButton" class="back hidden" type="button">‹ 처음</button>
+      <h1 id="screenTitle">사무실 재고</h1>
+      <span id="loadState" class="load-state"></span>
+    </header>
+
+    <section class="scan-bar" aria-label="바코드 입력">
+      <div class="scan-row">
+        <input id="search" type="search" autocomplete="off" autocapitalize="characters" inputmode="latin" lang="en" spellcheck="false" placeholder="바코드 스캔 · 상품명 검색">
+        <button id="cameraButton" class="camera-open" type="button">카메라로 찍기</button>
+      </div>
+      <div id="cameraPanel" class="camera hidden">
+        <video id="cameraVideo" playsinline muted></video>
+        <div class="camera-tools">
+          <label class="switch"><input id="cameraContinuous" type="checkbox"><span>계속 찍기</span></label>
+          <button id="torchButton" class="hidden" type="button">손전등</button>
+          <button id="photoButton" type="button">사진으로 찍기</button>
+          <button id="libraryButton" type="button">사진 보관함에서 고르기</button>
+          <button id="closeCameraButton" type="button">카메라 닫기</button>
+        </div>
+      </div>
+      <p id="cameraMessage" class="camera-message hidden"></p>
+      <input id="photoInput" class="hidden" type="file" accept="image/*" capture="environment">
+      <input id="libraryInput" class="hidden" type="file" accept="image/*">
+      <div id="status" class="status" role="status" aria-live="polite"></div>
+      <div id="results" class="results hidden"></div>
+    </section>
+
+    <section id="homeScreen">
+      <div class="home-grid">
+        <button id="goZone" class="home-button zone" type="button"><strong>구역 지정</strong><span>새로 들어온 상품을 선반 구역에 넣습니다.</span></button>
+        <button id="goCount" class="home-button count" type="button"><strong>재고 조사</strong><span>구역별로 실제 수량을 세어 장부와 맞춥니다.</span></button>
+        <button id="goFind" class="home-button find" type="button"><strong>상품 찾기 · 입고 · 출고</strong><span>상품을 찾아 수량을 넣고 뺍니다. 전체 재고목록도 여기 있습니다.</span></button>
+      </div>
+      <div id="homeNotes" class="home-notes"></div>
+    </section>
+
+    <section id="zoneScreen" class="hidden">
+      <div class="card">
+        <div class="target"><div><span>넣을 구역</span><strong id="zoneTargetValue">미선택</strong></div><button id="changeZoneTarget" type="button">구역 고르기</button></div>
+        <p class="hint">구역을 한 번 고른 뒤 상품을 연달아 스캔하면 바로 저장됩니다. 선반 구역 라벨을 스캔해도 구역이 바뀝니다.</p>
+        <div id="zoneConfirm" class="confirm hidden"><strong id="zoneConfirmText"></strong><div class="confirm-actions"><button id="zoneConfirmMove" class="go" type="button">옮기기</button><button id="zoneConfirmKeep" class="cancel" type="button">그대로 두기</button></div></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2>방금 넣은 상품</h2><span id="zoneLogCount" class="count-text"></span></div>
+        <div id="zoneLog" class="rows"></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2>구역 없는 상품</h2><span id="unassignedCount" class="count-text"></span></div>
+        <p class="hint">재고는 있는데 구역이 비어 있는 상품입니다.</p>
+        <div id="unassignedList" class="rows"></div>
+        <button id="unassignedMore" class="more hidden" type="button">더 보기</button>
+      </div>
+    </section>
+
+    <section id="countScreen" class="hidden">
+      <div id="countZones" class="card">
+        <div class="section-head"><h2>조사할 구역</h2><span id="countZoneCount" class="count-text"></span></div>
+        <button id="pickCountZone" class="primary" type="button">구역 고르기</button>
+        <p class="hint">선반 구역 라벨을 스캔해도 시작됩니다. 마지막 조사일은 이 기기에서 끝낸 날짜입니다.</p>
+        <div id="countZoneList" class="rows"></div>
+      </div>
+      <div id="countSession" class="card hidden">
+        <div class="section-head"><h2 id="countZoneTitle"></h2><button id="quitCountButton" class="row-button plain" type="button">조사 그만두기</button></div>
+        <div id="countProgress" class="progress"></div>
+        <div id="countQuit" class="confirm hidden"><strong>입력한 수량을 지우고 이 구역 조사를 그만둘까요?</strong><div class="confirm-actions"><button id="confirmQuitCount" class="danger" type="button">지우고 그만두기</button><button id="cancelQuitCount" class="cancel" type="button">계속 조사</button></div></div>
+        <div id="countExtra" class="confirm hidden"><strong id="countExtraText"></strong><div class="confirm-actions"><button id="countExtraMove" class="go" type="button">이 구역으로 옮기고 세기</button><button id="countExtraKeep" class="cancel" type="button">구역은 두고 수량만</button><button id="countExtraCancel" class="cancel" type="button">취소</button></div></div>
+        <div id="countRows" class="rows"></div>
+        <button id="reviewCountButton" class="primary" type="button">차이 반영</button>
+        <button id="finishCountButton" class="secondary" type="button">조사 끝내기</button>
+        <div id="countReview" class="confirm hidden">
+          <strong>반영 전 확인</strong>
+          <div id="countReviewList" class="rows"></div>
+          <p id="countReviewWarning" class="review-warning hidden"></p>
+          <div class="confirm-actions"><button id="confirmCountButton" class="danger" type="button">반영 확정</button><button id="cancelCountReview" class="cancel" type="button">돌아가기</button></div>
+        </div>
+        <div id="countResult" class="result-box hidden" role="status" aria-live="polite"></div>
+      </div>
+    </section>
+
+    <section id="findScreen" class="hidden">
+      <div id="missingStock" class="card hidden">
+        <div id="missingName" class="selected-name"></div><div id="missingOption" class="selected-option"></div>
+        <div class="identity-grid"><div class="identity"><span>SKU / 상품코드</span><strong id="missingCode">-</strong></div><div class="identity"><span>옵션 ID</span><strong id="missingOptionId">-</strong></div><div class="identity"><span>바코드</span><strong id="missingBarcode">-</strong></div></div>
+        <p class="hint">상품마스터에는 있지만 office 재고 행이 없습니다. 행을 추가하면 바로 구역·재고 작업을 이어갈 수 있습니다.</p>
+        <button id="createStockButton" class="primary" type="button">office 재고 행 추가</button>
+        <div id="createStockConfirm" class="confirm hidden"><strong>이 상품의 office 재고 행을 새로 추가할까요?</strong><div class="confirm-actions"><button id="confirmCreateStock" class="go" type="button">추가하기</button><button id="cancelCreateStock" class="cancel" type="button">취소</button></div></div>
+      </div>
+      <div id="selected" class="card hidden">
+        <div id="selectedName" class="selected-name"></div><div id="selectedOption" class="selected-option"></div>
+        <div class="key-facts"><div class="key-fact"><span>현재 office 재고</span><strong id="currentStock" class="key-value">0개</strong></div><div class="key-fact location"><span>현재 구역</span><strong id="currentLocation" class="key-value">미지정</strong></div></div>
+        <div class="identity-grid"><div class="identity"><span>SKU / 상품코드</span><strong id="selectedCode">-</strong></div><div class="identity"><span>옵션 ID</span><strong id="selectedOptionId">-</strong></div><div class="identity"><span>바코드</span><strong id="selectedBarcode">-</strong></div></div>
+        <div class="actions"><button class="action" type="button" data-operation="INBOUND">＋ 입고</button><button class="action" type="button" data-operation="OUTBOUND">－ 출고</button><button class="action" type="button" data-operation="COUNT">실재고 맞춤</button><button id="changeLocationButton" class="action" type="button">구역 바꾸기</button></div>
+        <div id="operationChangeConfirm" class="confirm hidden"><strong id="operationChangeMessage"></strong><div class="confirm-actions"><button id="confirmOperationChange" class="danger" type="button">목록 비우고 바꾸기</button><button id="cancelOperationChange" class="cancel" type="button">취소</button></div></div>
+        <div id="form" class="hidden">
+          <div class="fields"><label class="field"><span id="quantityLabel" class="label">수량</span><input id="quantity" type="number" min="0" max="999999" step="1" inputmode="numeric" placeholder="0~999999"></label><label class="field"><span class="label">메모 (선택)</span><input id="memo" type="text" maxlength="120" placeholder="예: 반품 입고"></label></div>
+          <p id="operationHint" class="hint"></p>
+          <div class="preview"><span id="beforePreview">0개</span><span class="arrow">→</span><span id="afterPreview">-</span></div>
+          <button id="submitButton" class="primary" type="button">작업 목록에 담기</button>
+        </div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2 id="batchHeading">작업 목록 · <span id="operationTitle">입고</span></h2><span id="batchCount" class="count-text">0개 상품</span></div>
+        <label class="switch" style="margin-top:8px"><input id="scanToBatch" type="checkbox"><span>스캔하면 바로 1개씩 담기 (연속 입고·출고)</span></label>
+        <div id="batchList" class="rows"></div>
+        <button id="reviewBatchButton" class="primary" type="button">일괄 반영</button>
+        <div id="batchReview" class="confirm hidden"><strong>반영 전 확인</strong><div id="reviewList" class="rows"></div><p id="reviewWarning" class="review-warning hidden"></p><div class="confirm-actions"><button id="confirmBatchButton" class="danger" type="button">반영 확정</button><button id="cancelBatchReview" class="cancel" type="button">돌아가기</button></div></div>
+        <div id="batchResult" class="result-box hidden" role="status" aria-live="polite"></div>
+      </div>
+      <div class="card">
+        <div class="section-head"><h2>전체 재고목록</h2><span id="inventoryCount" class="count-text"></span></div>
+        <div class="toolbar"><label class="toolbar-field"><span class="toolbar-label">목록 검색</span><input id="inventorySearch" type="search" autocomplete="off" placeholder="상품명 · 옵션 · SKU · 바코드 검색"></label><label class="toolbar-field"><span class="toolbar-label">구역</span><select id="locationFilter"><option value="ALL">모든 구역</option><option value="UNASSIGNED">미지정</option></select></label><label class="toolbar-field"><span class="toolbar-label">재고 상태</span><select id="statusFilter"><option value="ALL">전체</option><option value="IN_STOCK">재고 있음</option><option value="ZERO">재고 0</option><option value="MISSING">행 없음</option></select></label><label class="toolbar-field"><span class="toolbar-label">정렬</span><select id="inventorySort"><option value="LOCATION">구역순</option><option value="STOCK_DESC">재고 많은순</option><option value="STOCK_ASC">재고 적은순</option><option value="NAME">상품명순</option></select></label><label class="group-toggle"><input id="groupByLocation" type="checkbox"><span>구역별 묶어 보기</span></label></div>
+        <div id="inventoryList"><div id="inventoryTable" class="table-wrap"><table><thead><tr><th>SKU / 상품코드</th><th>상품 · 옵션</th><th>옵션 ID</th><th>바코드</th><th>구역</th><th>현재고</th></tr></thead><tbody id="inventoryBody"></tbody></table></div><div id="inventoryCards" class="inventory-cards"></div><div id="inventoryGroups" class="inventory-groups hidden"></div></div>
+        <button id="loadMoreInventory" class="more hidden" type="button">재고목록 더 보기</button>
+      </div>
+    </section>
+
+    <section id="zonePicker" class="picker hidden" aria-label="구역 고르기">
+      <div class="picker-head"><strong id="pickerTitle">구역 고르기</strong><button id="pickerClose" class="back" type="button">닫기</button></div>
+      <div id="recentZones" class="chips"></div>
+      <div id="zoneLetters" class="letter-grid"></div>
+      <div id="zoneNumbers" class="number-grid hidden"></div>
+      <button id="pickerBack" class="secondary hidden" type="button">구역 코드 다시 고르기</button>
+      <button id="pickerClear" class="secondary hidden" type="button">구역 비우기 (미지정)</button>
+    </section>
+  </main>
+  <script>
+    const INITIAL_DATA = {"warehouseCode":"office","products":[],"loadedAt":""};
+    const MAX_QUANTITY = 999999;
+    const BATCH_STORAGE_KEY = 'office-inventory-batch-v1';
+    const COUNT_STORAGE_KEY = 'office-inventory-count-v1';
+    const RECENT_ZONE_KEY = 'office-inventory-recent-zones-v1';
+    const COUNT_DATE_KEY = 'office-inventory-count-dates-v1';
+    const ZONE_LETTERS = [...Array.from({length:26}, (_, index) => String.fromCharCode(65 + index)), 'MT1','MT2','MT3','MT4','MT5'];
+    const ZONE_NUMBERS = [1,2,3,4,5,6];
+    const BARCODE_LIBRARY = {
+      url: 'https://cdn.jsdelivr.net/npm/@zxing/library@0.21.3/umd/index.min.js',
+      integrity: 'sha384-BzBxP10ZE72aitqj5UMmUsbKFliP/DZqA8Wq+BNNhlIJDGoEd1tpkMYXOg9+n6sB'
+    };
+    const OPERATION_TEXT = {
+      COUNT: {title:'실재고 맞춤', label:'실제 센 총수량', hint:'실사한 총재고를 그대로 입력하세요. 0도 입력할 수 있습니다.'},
+      INBOUND: {title:'입고', label:'입고 수량', hint:'현재고에 더할 수량을 입력하세요.'},
+      OUTBOUND: {title:'출고', label:'출고 수량', hint:'현재고에서 뺄 수량을 입력하세요.'}
+    };
+    const el = id => document.getElementById(id);
+    const TOUCH = Boolean(window.matchMedia && window.matchMedia('(pointer:coarse)').matches);
+
+    /* ---------- 값 다루기 (화면과 무관한 함수) ---------- */
+    function normalize(value){return String(value==null?'':value).trim().toLowerCase().normalize('NFKC').replace(/\s+/g,' ')}
+    function normalizeScannerQuery(value){const raw=String(value==null?'':value).trim();if(!/\d/.test(raw)||/\s/.test(raw)||!/[ㄱ-ㅎㅏ-ㅣ가-힣]/.test(raw))return raw;const initialKeys=['r','R','s','e','E','f','a','q','Q','t','T','d','w','W','c','z','x','v','g'],medialKeys=['k','o','i','O','j','p','u','P','h','hk','ho','hl','y','n','nj','np','nl','b','m','ml','l'],finalKeys=['','r','R','rt','s','sw','sg','e','f','fr','fa','fq','ft','fx','fv','fg','a','q','qt','t','T','d','w','c','z','x','v','g'],jamoKeys={'ㄱ':'r','ㄲ':'R','ㄳ':'rt','ㄴ':'s','ㄵ':'sw','ㄶ':'sg','ㄷ':'e','ㄸ':'E','ㄹ':'f','ㄺ':'fr','ㄻ':'fa','ㄼ':'fq','ㄽ':'ft','ㄾ':'fx','ㄿ':'fv','ㅀ':'fg','ㅁ':'a','ㅂ':'q','ㅃ':'Q','ㅄ':'qt','ㅅ':'t','ㅆ':'T','ㅇ':'d','ㅈ':'w','ㅉ':'W','ㅊ':'c','ㅋ':'z','ㅌ':'x','ㅍ':'v','ㅎ':'g','ㅏ':'k','ㅐ':'o','ㅑ':'i','ㅒ':'O','ㅓ':'j','ㅔ':'p','ㅕ':'u','ㅖ':'P','ㅗ':'h','ㅘ':'hk','ㅙ':'ho','ㅚ':'hl','ㅛ':'y','ㅜ':'n','ㅝ':'nj','ㅞ':'np','ㅟ':'nl','ㅠ':'b','ㅡ':'m','ㅢ':'ml','ㅣ':'l'};let converted='';for(const character of raw){const code=character.charCodeAt(0);if(code>=44032&&code<=55203){const offset=code-44032;converted+=initialKeys[Math.floor(offset/588)]+medialKeys[Math.floor((offset%588)/28)]+finalKeys[offset%28]}else converted+=jamoKeys[character]||character}return/^[A-Za-z0-9._:/-]+$/.test(converted)?converted.toUpperCase():raw}
+    function numberText(value){const number=Number(value);return(Number.isFinite(number)?number:0).toLocaleString('ko-KR')+'개'}
+    function escapeHtml(value){return String(value==null?'':value).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#039;')}
+    function makeRequestId(){const random=(window.crypto&&crypto.getRandomValues)?Array.from(crypto.getRandomValues(new Uint32Array(3))).map(value=>value.toString(36)).join(''):Math.random().toString(36).slice(2)+Math.random().toString(36).slice(2);return'OFFICE-ADJ-'+Date.now().toString(36)+'-'+random}
+    function itemCode(item){return String(item&&(item.productCode||item.sku)||'').trim()}
+    function itemOption(item){return String(item&&(item.optionName||item.option)||'').trim()}
+    function itemOptionId(item){return String(item&&(item.optionId||item.optionIdentifier||item.skuId)||'').trim()}
+    function itemExposureId(item){return String(item&&(item.exposureId||item.productId)||'').trim()}
+    function itemLocation(item){if(!item)return'';const direct=String(item.location||item.storageLocation||item.zone||'').trim().toUpperCase();if(/^(?:[A-Z]|MT[1-5])-[1-6]$/.test(direct))return direct;const letter=String(item.locationLetter||item.zoneLetter||'').trim().toUpperCase();const number=String(item.locationNumber||item.zoneNumber||'').trim();return/^(?:[A-Z]|MT[1-5])$/.test(letter)&&/^[1-6]$/.test(number)?letter+'-'+number:''}
+    function itemIdentity(item){return itemCode(item)+'\u0001'+itemOptionId(item)}
+    function blockText(item){const code=String(item&&item.blockCode||''),table={MISSING_STOCK_ROW:'office 재고 행이 없습니다.',DUPLICATE_PRODUCT_CODE:'같은 상품코드가 상품마스터 여러 행에 있어 확인이 필요합니다.',LEADING_INACTIVE_PRODUCT_ROW:'상품마스터 첫 행이 사용 안 함이라 확인이 필요합니다.',INACTIVE_STOCK_ROW:'office 재고 행이 사용 안 함 상태입니다.',DUPLICATE_STOCK_ROW:'office 재고 행이 여러 개라 확인이 필요합니다.',INVALID_CURRENT_STOCK:'현재고 계산값을 확인해야 합니다.',OPTION_UNMATCHED:'상품마스터 옵션 정보를 확인해야 합니다.'};return String(item&&item.blockReason||'')||table[code]||'이 상품은 장부를 먼저 확인해야 합니다.'}
+
+    /* 구역 라벨: 선반 라벨은 ZONE-A-1 꼴. 구역을 고르는 중에는 A-1만 쳐도 받는다. */
+    function parseZoneLabel(value, allowBare){
+      const text = String(value == null ? '' : value).trim().toUpperCase();
+      const labelled = /^ZONE-((?:[A-Z]|MT[1-5])-[1-6])$/.exec(text);
+      if (labelled) return labelled[1];
+      const bare = allowBare ? /^((?:[A-Z]|MT[1-5])-[1-6])$/.exec(text) : null;
+      return bare ? bare[1] : '';
+    }
+    /* 받아 둔 목록에서 스캔값을 찾는다. 서버 조회와 같은 순서: 바코드 → 상품코드 → 옵션ID → 노출ID. */
+    function resolveScan(products, value){
+      const key = normalize(value);
+      if (!key || !Array.isArray(products)) return {type:'none'};
+      const readers = [item => item.barcode, itemCode, itemOptionId, itemExposureId];
+      for (const read of readers) {
+        const matches = products.filter(item => item && typeof item === 'object' && normalize(read(item)) === key);
+        if (matches.length === 1) return {type:'item', item:matches[0]};
+        if (matches.length > 1) return {type:'ambiguous', candidates:matches};
+      }
+      return {type:'none'};
+    }
+    function unassignedItems(products){
+      if (!Array.isArray(products)) return [];
+      return products.filter(item => item && item.adjustable !== false && !itemLocation(item) && Number(item.currentStock) > 0)
+        .sort((a, b) => String(a.productName || '').localeCompare(String(b.productName || ''), 'ko') || itemOption(a).localeCompare(itemOption(b), 'ko'));
+    }
+    function planZoneAssign(item, zone){
+      if (!item) return {action:'none'};
+      if (item.blockCode === 'MISSING_STOCK_ROW') return {action:'missing'};
+      if (item.adjustable === false) return {action:'blocked', reason:blockText(item)};
+      if (!parseZoneLabel(zone, true)) return {action:'needZone'};
+      const from = itemLocation(item);
+      if (from === zone) return {action:'same', from};
+      if (from) return {action:'confirmMove', from};
+      return {action:'save', from:''};
+    }
+    /* expectedBefore(화면이 본 지금 구역, 없으면 '')와 expectedVersion(화면이 본 구역 버전)을 함께 보낸다.
+       서버는 구역을 바꿀 때 둘 다 장부와 같아야만 쓴다. 버전은 저장될 때마다 커지므로, 이미 반영된 요청은 구역이 갔다가 돌아와도 다시 쓰이지 않는다. */
+    function itemLocationVersion(item){
+      const version = item ? item.locationVersion : null;
+      return typeof version === 'number' && Number.isInteger(version) && version >= 0 ? version : null;
+    }
+    function locationPayload(productCode, optionId, zone, requestId, expectedBefore, expectedVersion){
+      const match = /^([A-Z]|MT[1-5])-([1-6])$/.exec(String(zone || ''));
+      const payload = {productCode:String(productCode || ''), optionId:String(optionId || ''), locationLetter:match ? match[1] : '', locationNumber:match ? match[2] : '', clear:!match, requestId:String(requestId || ''), light:true};
+      if (typeof expectedBefore === 'string') payload.expectedBeforeLocation = expectedBefore;
+      if (typeof expectedVersion === 'number' && Number.isInteger(expectedVersion) && expectedVersion >= 0) payload.expectedLocationVersion = expectedVersion;
+      return payload;
+    }
+    /* version(서버가 답한 구역 버전)을 주면 그 값도 함께 바꾼다. 주지 않으면 버전은 그대로 둔다(화면이 먼저 바꿔 보여 줄 때). */
+    function withLocation(products, productCode, zone, version){
+      const match = /^([A-Z]|MT[1-5])-([1-6])$/.exec(String(zone || ''));
+      const code = String(productCode || '');
+      if (!code) return Array.isArray(products) ? products : [];
+      const stamp = typeof version === 'number' && Number.isInteger(version) && version >= 0 ? {locationVersion:version} : {};
+      return (Array.isArray(products) ? products : []).map(item => itemCode(item) === code
+        ? {...item, location:match ? match[0] : '', locationLetter:match ? match[1] : '', locationNumber:match ? match[2] : '', ...stamp}
+        : item);
+    }
+    function withStock(products, productCode, stock){
+      const code = String(productCode || ''), number = Number(stock);
+      if (!code || !Number.isFinite(number)) return Array.isArray(products) ? products : [];
+      return (Array.isArray(products) ? products : []).map(item => itemCode(item) === code ? {...item, currentStock:number} : item);
+    }
+
+    /* ---------- 재고 조사 (구역 단위) ---------- */
+    function countRowFromItem(item, extra){
+      const stock = Number(item && item.currentStock);
+      return {id:itemIdentity(item), productCode:itemCode(item), productName:String(item && item.productName || itemCode(item)), optionName:itemOption(item), optionId:itemOptionId(item), barcode:String(item && item.barcode || ''), ledger:Number.isFinite(stock) ? stock : 0, location:itemLocation(item), counted:null, changedFrom:null, movedFrom:null, requestId:'', needsReconciliation:false, extra:Boolean(extra), blocked:Boolean(item && item.adjustable === false)};
+    }
+    function createCountSession(zone, products, startedAt){
+      const rows = selectInventoryItems(products, {location:zone, sort:'NAME'})
+        .filter(item => inventoryStatus(item) !== 'MISSING')
+        .map(item => countRowFromItem(item, false));
+      return {version:3, zone:String(zone || ''), startedAt:String(startedAt || ''), rows};
+    }
+    /* 검증이 끝나지 않은 줄(needsReconciliation)은 수량도 요청번호도 바꾸지 않는다.
+       수량이 바뀌거나, 「세는 동안 장부(수량·구역)가 바뀜」 표시가 있는 줄을 다시 확인하면 새 요청번호를 준다.
+       표시가 없는 줄을 같은 수량으로 다시 누를 때만 번호가 그대로다(실패한 줄을 다시 보낼 때 중복 반영을 막는 번호). */
+    function setCountRow(session, id, counted, requestIdFactory){
+      const rows = session.rows.map(row => {
+        if (row.id !== id || row.blocked || row.needsReconciliation) return row;
+        if (counted == null || String(counted).trim() === '') return {...row, counted:null, changedFrom:null, movedFrom:null, requestId:''};
+        const number = Number(counted);
+        if (!Number.isInteger(number) || number < 0 || number > MAX_QUANTITY) return row;
+        if (number === row.counted && row.changedFrom == null && row.movedFrom == null && row.requestId) return row;
+        return {...row, counted:number, changedFrom:null, movedFrom:null, requestId:typeof requestIdFactory === 'function' ? requestIdFactory() : ''};
+      });
+      return {...session, rows};
+    }
+    function addCountRow(session, item){
+      const id = itemIdentity(item);
+      if (session.rows.some(row => row.id === id)) return session;
+      return {...session, rows:[countRowFromItem(item, true), ...session.rows]};
+    }
+    function countProgress(session){
+      const rows = (session && Array.isArray(session.rows) ? session.rows : []).filter(row => !row.blocked);
+      const checked = rows.filter(row => row.counted != null);
+      return {total:rows.length, checked:checked.length, diff:checked.filter(row => !row.needsReconciliation && row.counted !== row.ledger).length, pending:rows.filter(row => row.needsReconciliation).length};
+    }
+    /* 새로 받은 장부 수량·구역을 조사 줄에 맞춘다. 이미 센 줄의 장부 수량이 바뀌었으면 changedFrom에,
+       장부 구역이 바뀌었으면 movedFrom에 예전 값을 남겨 다시 확인받는다(처음 본 값을 지킨다).
+       검증이 끝나지 않은 줄은 건드리지 않는다(같은 요청을 그대로 다시 확인할 수 있어야 한다). */
+    function syncCountSession(session, products){
+      const byId = new Map((Array.isArray(products) ? products : []).map(item => [itemIdentity(item), item]));
+      const rows = session.rows.map(row => {
+        const item = byId.get(row.id);
+        if (!item || row.needsReconciliation) return row;
+        const fresh = Number(item.currentStock), blocked = item.adjustable === false, zone = itemLocation(item), seen = String(row.location || '');
+        let next = blocked === row.blocked ? row : {...row, blocked};
+        if (zone !== seen) {
+          const movedFrom = next.counted == null ? null : (next.movedFrom == null ? seen : next.movedFrom);
+          next = {...next, location:zone, movedFrom:movedFrom === zone ? null : movedFrom, extra:zone !== session.zone};
+        }
+        if (!Number.isFinite(fresh) || fresh === next.ledger) return next;
+        if (next.counted == null || next.counted === fresh) return {...next, ledger:fresh, changedFrom:null};
+        return {...next, ledger:fresh, changedFrom:next.changedFrom == null ? next.ledger : next.changedFrom};
+      });
+      return {...session, rows};
+    }
+    /* 반영할 줄만: 센 수량이 장부와 다른 줄. 맞은 줄은 서버로 보내지 않는다.
+       검증이 끝나지 않은 줄은 이미 이력에 기록됐을 수 있어 반영 대상에서 뺀다. */
+    function countDifferences(session){
+      return (session && Array.isArray(session.rows) ? session.rows : []).filter(row => !row.blocked && !row.needsReconciliation && row.counted != null && row.counted !== row.ledger);
+    }
+    /* 반영 기록은 남았지만 현재고 검증이 끝나지 않은 줄. 새로 반영하지 않고 같은 요청번호로 다시 확인만 한다. */
+    function countPendingChecks(session){
+      return (session && Array.isArray(session.rows) ? session.rows : []).filter(row => row.needsReconciliation);
+    }
+    /* 서버가 현재고 검증까지 끝냈다고 답했을 때만 그 현재고를 돌려준다. verified가 true가 아니거나 현재고가 없으면 null. */
+    function verifiedAfterStock(result){
+      const operation = result && result.stockOperation;
+      if (!result || result.verified !== true || !operation || operation.afterStock == null || operation.afterStock === '') return null;
+      const after = Number(operation.afterStock);
+      return Number.isFinite(after) ? after : null;
+    }
+    /* 반영 응답을 조사 줄에 적용한다. 검증된 응답이면 장부 수량을 고치고 쓴 요청번호를 새 번호로 바꾼다.
+       검증되지 않은 응답이면 줄을 그대로 잠근다: 수량·장부·요청번호가 그대로라 다시 보내도 서버는 같은 요청으로 본다(새로 쓰지 않는다). */
+    function applyCountResult(session, id, result, requestIdFactory){
+      const after = verifiedAfterStock(result);
+      const rows = session.rows.map(row => {
+        if (row.id !== id) return row;
+        if (after == null) return {...row, needsReconciliation:true};
+        return {...row, ledger:after, changedFrom:after === row.counted ? null : row.ledger, needsReconciliation:false, requestId:typeof requestIdFactory === 'function' ? requestIdFactory() : ''};
+      });
+      return {...session, rows};
+    }
+    /* 반영 전에 다시 확인받아야 하는 줄: 센 뒤 장부 수량이나 장부 구역이 바뀐 차이 줄. */
+    function countUnresolved(session){
+      return countDifferences(session).filter(row => row.changedFrom != null || row.movedFrom != null);
+    }
+    /* 화면이 본 장부 수량과 장부 구역을 함께 보낸다. 서버는 둘 중 하나라도 다르면 쓰지 않고 멈춘다. */
+    function countPayload(row, zone){
+      const target = String(zone || ''), seen = String(row && row.location || '');
+      const memo = '구역 ' + (target || '미지정') + ' 재고 조사' + (seen !== target ? '(장부 구역 ' + (seen || '미지정') + ')' : '');
+      return {productCode:String(row && row.productCode || ''), optionId:String(row && row.optionId || ''), operation:'COUNT', quantity:Number(row && row.counted), memo:memo.slice(0, 120), requestId:String(row && row.requestId || ''), expectedBeforeStock:Number(row && row.ledger), expectedLocation:seen, light:true};
+    }
+    function restoreCountState(raw){
+      try {
+        const saved = typeof raw === 'string' ? JSON.parse(raw) : raw;
+        if (!saved || typeof saved !== 'object' || saved.version !== 3 || !parseZoneLabel(saved.zone, true) || !Array.isArray(saved.rows)) return null;
+        const ids = new Set();
+        for (const row of saved.rows) {
+          if (!row || typeof row !== 'object' || Array.isArray(row)) return null;
+          if (!['id','productCode','productName','optionName','optionId','barcode','requestId'].every(field => typeof row[field] === 'string')) return null;
+          if (!row.productCode.trim() || row.id !== itemIdentity(row) || ids.has(row.id)) return null;
+          if (typeof row.ledger !== 'number' || !Number.isFinite(row.ledger)) return null;
+          if (row.counted !== null && (!Number.isInteger(row.counted) || row.counted < 0 || row.counted > MAX_QUANTITY)) return null;
+          if (row.changedFrom !== null && typeof row.changedFrom !== 'number') return null;
+          if (typeof row.location !== 'string' || (row.location !== '' && parseZoneLabel(row.location, true) !== row.location)) return null;
+          if (row.movedFrom !== null && (typeof row.movedFrom !== 'string' || (row.movedFrom !== '' && parseZoneLabel(row.movedFrom, true) !== row.movedFrom))) return null;
+          if (row.counted !== null && !/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(row.requestId)) return null;
+          if (typeof row.needsReconciliation !== 'boolean' || (row.needsReconciliation && row.counted === null)) return null;
+          ids.add(row.id);
+        }
+        return {version:3, zone:saved.zone, startedAt:String(saved.startedAt || ''), rows:saved.rows.map(row => ({...row, extra:Boolean(row.extra), blocked:Boolean(row.blocked)}))};
+      } catch (error) { return null; }
+    }
+
+    /* ---------- 작업 목록 (입고·출고·실재고 맞춤) ---------- */
+    function createBatchItem(item,operation,quantity,memo,requestId){const mode=String(operation||'').toUpperCase(),number=Number(quantity),stock=Number(item&&item.currentStock);return{id:itemIdentity(item),productCode:itemCode(item),productName:String(item&&item.productName||itemCode(item)),optionName:itemOption(item),optionId:itemOptionId(item),barcode:String(item&&item.barcode||''),currentStock:Number.isFinite(stock)?stock:0,operation:mode,quantity:number,memo:String(memo||'').slice(0,120),requestId:String(requestId||'')}}
+    function addScannedBatchItem(items,item,operation,requestIdFactory){const list=Array.isArray(items)?items.map(entry=>({...entry})):[],mode=String(operation||'').toUpperCase();if(list.some(entry=>entry.operation!==mode))return{items:list,error:'작업 목록에는 한 가지 작업 종류만 담을 수 있습니다.'};const identity=itemIdentity(item),existing=list.find(entry=>entry.id===identity);if(existing){if(!Number.isInteger(existing.quantity)||existing.quantity>=MAX_QUANTITY)return{items:list,error:'수량은 999,999 이하로 입력해 주세요.'};existing.quantity+=1;return{items:list,item:existing,incremented:true}}const requestId=typeof requestIdFactory==='function'?requestIdFactory():'';const created=createBatchItem(item,mode,1,'',requestId);return{items:[...list,created],item:created,added:true}}
+    function upsertBatchItem(items,item,operation,quantity,memo,requestIdFactory){const list=Array.isArray(items)?items.map(entry=>({...entry})):[],mode=String(operation||'').toUpperCase();if(list.some(entry=>entry.operation!==mode))return{items:list,error:'작업 목록에는 한 가지 작업 종류만 담을 수 있습니다.'};const identity=itemIdentity(item),index=list.findIndex(entry=>entry.id===identity),requestId=index>=0?list[index].requestId:(typeof requestIdFactory==='function'?requestIdFactory():'');const created=createBatchItem(item,mode,quantity,memo,requestId);if(index>=0)list[index]=created;else list.push(created);return{items:list,item:created,added:index<0}}
+    function changeBatchOperation(items,currentOperation,nextOperation,confirmed){const list=Array.isArray(items)?items:[],current=String(currentOperation||'COUNT').toUpperCase(),next=String(nextOperation||'').toUpperCase();if(!['COUNT','INBOUND','OUTBOUND'].includes(next)||next===current)return{operation:current,items:list,requiresConfirmation:false};if(list.length&&!confirmed)return{operation:current,items:list,requiresConfirmation:true};return{operation:next,items:list.length?[]:list,requiresConfirmation:false,cleared:list.length>0}}
+    function calculateBatchAfter(item){const before=Number(item&&item.currentStock),quantity=Number(item&&item.quantity),operation=String(item&&item.operation||'').toUpperCase();if(!Number.isFinite(before)||!Number.isFinite(quantity))return NaN;return operation==='COUNT'?quantity:(operation==='INBOUND'?before+quantity:before-quantity)}
+    function validateBatchItem(item){const operation=String(item&&item.operation||'').toUpperCase(),rawQuantity=item&&item.quantity,quantity=Number(rawQuantity),minimum=operation==='COUNT'?0:1,requestId=String(item&&item.requestId||'');if(!['COUNT','INBOUND','OUTBOUND'].includes(operation))return{error:'작업 종류가 올바르지 않습니다.'};if(rawQuantity==null||String(rawQuantity).trim()===''||!Number.isInteger(quantity)||quantity<minimum||quantity>MAX_QUANTITY)return{error:operation==='COUNT'?'실재고 수량은 0~999,999 정수로 입력해 주세요.':'수량은 1~999,999 정수로 입력해 주세요.'};if(!/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(requestId))return{error:'요청번호를 확인할 수 없습니다. 이 항목을 삭제하고 다시 스캔해 주세요.'};const after=calculateBatchAfter(item);if(!Number.isFinite(after))return{error:'현재고를 확인할 수 없습니다.'};if(after<0)return{error:'현재고보다 많이 출고할 수 없습니다.'};return{quantity,after}}
+    /* 「실재고 맞춤」은 화면이 본 현재고를 함께 보낸다(그 사이 장부가 바뀌었으면 서버가 쓰지 않고 멈춘다). 입고·출고는 증감이라 보내지 않는다. */
+    function batchPayload(item){const payload={productCode:String(item&&item.productCode||''),optionId:String(item&&item.optionId||''),operation:String(item&&item.operation||''),quantity:Number(item&&item.quantity),memo:String(item&&item.memo||''),requestId:String(item&&item.requestId||''),light:true};if(payload.operation.toUpperCase()==='COUNT'&&item&&typeof item.currentStock==='number'&&Number.isFinite(item.currentStock))payload.expectedBeforeStock=item.currentStock;return payload}
+    function restoreBatchState(raw){const fallback={operation:'COUNT',items:[]};try{const saved=typeof raw==='string'?JSON.parse(raw):raw;if(!saved||typeof saved!=='object'||saved.version!==1)return fallback;const operation=String(saved.operation||'').toUpperCase();if(!['COUNT','INBOUND','OUTBOUND'].includes(operation)||!Array.isArray(saved.items))return fallback;const stringFields=['id','productCode','productName','optionName','optionId','barcode','operation','memo','requestId'],valid=saved.items.every(item=>{if(!item||typeof item!=='object'||Array.isArray(item))return false;if(!stringFields.every(field=>Object.prototype.hasOwnProperty.call(item,field)&&typeof item[field]==='string'))return false;if(!Object.prototype.hasOwnProperty.call(item,'currentStock')||typeof item.currentStock!=='number'||!Number.isFinite(item.currentStock))return false;if(!Object.prototype.hasOwnProperty.call(item,'quantity')||typeof item.quantity!=='number'||!Number.isInteger(item.quantity))return false;if(item.operation!==operation||!item.productCode.trim()||item.id!==itemIdentity(item))return false;if(!/^[A-Za-z0-9][A-Za-z0-9:_-]{7,159}$/.test(item.requestId)||item.memo.length>120)return false;const minimum=operation==='COUNT'?0:1;return item.quantity>=minimum&&item.quantity<=MAX_QUANTITY});if(!valid)return fallback;const identities=new Set(),requestIds=new Set();for(const item of saved.items){if(identities.has(item.id)||requestIds.has(item.requestId))return fallback;identities.add(item.id);requestIds.add(item.requestId)}return{operation,items:saved.items.map(item=>({...item}))}}catch(error){return fallback}}
+    function getBatchStorage(){try{return window.localStorage}catch(error){return null}}
+    function writeBatchStorage(storage,key,data){try{storage.setItem(key,JSON.stringify({version:1,operation:data.operation,items:data.items}));return true}catch(error){return false}}
+    function readBatchStorage(storage,key){try{return storage.getItem(key)||''}catch(error){return''}}
+    function writeJsonStorage(storage,key,value){try{if(value==null)storage.removeItem(key);else storage.setItem(key,JSON.stringify(value));return true}catch(error){return false}}
+    function readJsonStorage(storage,key,fallback){try{const parsed=JSON.parse(storage.getItem(key)||'null');return parsed==null?fallback:parsed}catch(error){return fallback}}
+    /* 위에서부터 한 건씩 보낸다. 실패하면 그 자리에서 멈추고 실패한 줄부터 남긴다. */
+    function runBatchSequential(items,submitOne,onSuccess,toPayload){return(async()=>{const pending=Array.isArray(items)?items.slice():[],completed=[],build=typeof toPayload==='function'?toPayload:batchPayload;for(let index=0;index<pending.length;index+=1){const item=pending[index];try{const response=await submitOne(build(item));completed.push({item,response});if(typeof onSuccess==='function')await onSuccess(item,response)}catch(error){return{completed,failed:item,remaining:pending.slice(index),error}}}return{completed,failed:null,remaining:[],error:null}})()}
+
+    /* ---------- 전체 재고목록 ---------- */
+    function inventoryStatus(item){if(item&&item.blockCode==='MISSING_STOCK_ROW')return'MISSING';const stock=Number(item&&item.currentStock);return Number.isFinite(stock)&&stock>0?'IN_STOCK':'ZERO'}
+    function compareInventoryItems(a,b,sort){const mode=String(sort||'LOCATION').toUpperCase(),stock=value=>{const number=Number(value&&value.currentStock);return Number.isFinite(number)?number:0},name=value=>String(value&&(value.productName||itemCode(value))||''),locationRank=value=>{const location=itemLocation(value),match=/^([A-Z]|MT[1-5])-([1-6])$/.exec(location);if(!match)return Number.MAX_SAFE_INTEGER;const zone=match[1].startsWith('MT')?26+Number(match[1].slice(2)):match[1].charCodeAt(0)-64;return zone*10+Number(match[2])},byName=(left,right)=>name(left).localeCompare(name(right),'ko')||itemOption(left).localeCompare(itemOption(right),'ko')||itemCode(left).localeCompare(itemCode(right),'ko');if(mode==='STOCK_DESC')return stock(b)-stock(a)||byName(a,b);if(mode==='STOCK_ASC')return stock(a)-stock(b)||byName(a,b);if(mode==='NAME')return byName(a,b);return locationRank(a)-locationRank(b)||itemCode(a).localeCompare(itemCode(b),'ko')}
+    function selectInventoryItems(products,criteria){if(!Array.isArray(products))return[];const options=criteria&&typeof criteria==='object'?criteria:{},words=normalize(options.query).split(' ').filter(Boolean),locationFilter=String(options.location||'ALL'),statusFilter=String(options.status||'ALL');return products.filter(item=>{if(!item||typeof item!=='object')return false;const location=itemLocation(item),status=inventoryStatus(item);if(locationFilter==='UNASSIGNED'&&location)return false;if(locationFilter!=='ALL'&&locationFilter!=='UNASSIGNED'&&location!==locationFilter)return false;if(statusFilter!=='ALL'&&status!==statusFilter)return false;const haystack=normalize([itemCode(item),item.productName,itemOption(item),itemOptionId(item),itemExposureId(item),item.barcode,location].join(' '));return words.every(word=>haystack.includes(word))}).sort((a,b)=>compareInventoryItems(a,b,options.sort))}
+    function groupInventoryItems(items){if(!Array.isArray(items)||!items.length)return[];const groups=new Map();items.forEach(item=>{const location=itemLocation(item),key=location||'';if(!groups.has(key))groups.set(key,{location:key,label:key||'미지정',items:[],itemCount:0,stockTotal:0});const group=groups.get(key),stock=inventoryStatus(item)==='MISSING'?0:Number(item.currentStock);group.items.push(item);group.itemCount+=1;group.stockTotal+=Number.isFinite(stock)?stock:0});return[...groups.values()].sort((a,b)=>compareInventoryItems({location:a.location},{location:b.location},'LOCATION'))}
+
+    /* ---------- 상태 ---------- */
+    const STORAGE = getBatchStorage();
+    const SAVED_BATCH = restoreBatchState(readBatchStorage(STORAGE, BATCH_STORAGE_KEY));
+    const state = {
+      data: INITIAL_DATA || {products:[], loadedAt:''},
+      screen: 'home', loadingInventory:true, loadFailed:false, inventoryLimit:120, unassignedLimit:40,
+      zoneTarget:'', zoneLog:[], zoneQueue:[], zoneBusy:false, zonePending:null, zoneRows:null, recent:[],
+      count: restoreCountState(readBatchStorage(STORAGE, COUNT_STORAGE_KEY)), countFocus:'', countExtra:null, countReviewing:false, countLoading:false,
+      picker:null,
+      selected:null, visibleCandidates:[], operation:SAVED_BATCH.operation, batch:SAVED_BATCH.items, pendingOperation:'', reviewingBatch:false,
+      submitting:false, lookingUp:false, creatingStock:false, requestId:'', stale:false, refreshing:false
+    };
+    function products(){return Array.isArray(state.data.products) ? state.data.products : []}
+    function persistBatch(){writeBatchStorage(STORAGE, BATCH_STORAGE_KEY, {operation:state.operation, items:state.batch})}
+    function persistCount(){writeJsonStorage(STORAGE, COUNT_STORAGE_KEY, state.count)}
+    function recentZones(){const list = readJsonStorage(STORAGE, RECENT_ZONE_KEY, []);return Array.isArray(list) ? list.filter(zone => parseZoneLabel(zone, true)).slice(0, 6) : []}
+    function rememberZone(zone){if (!parseZoneLabel(zone, true)) return;writeJsonStorage(STORAGE, RECENT_ZONE_KEY, [zone, ...recentZones().filter(value => value !== zone)].slice(0, 6))}
+    function countDates(){const dates = readJsonStorage(STORAGE, COUNT_DATE_KEY, {});return dates && typeof dates === 'object' && !Array.isArray(dates) ? dates : {}}
+    function todayText(){const now = new Date(), pad = value => String(value).padStart(2, '0');return now.getFullYear() + '-' + pad(now.getMonth() + 1) + '-' + pad(now.getDate())}
+    function callServer(name, argument){return new Promise((resolve, reject) => google.script.run.withSuccessHandler(resolve).withFailureHandler(reject)[name](argument))}
+    function errorText(error, fallback){return error && error.message ? String(error.message) : fallback}
+    function busy(){return state.submitting || state.zoneBusy || state.zoneQueue.length > 0}
+
+    /* ---------- 공통 표시 ---------- */
+    function showStatus(message, type){el('status').textContent = message;el('status').className = 'status show ' + (type || 'ok')}
+    function clearStatus(){el('status').className = 'status';el('status').textContent = ''}
+    function focusScan(){if (TOUCH || !el('zonePicker').classList.contains('hidden')) return;const input = el('search');if (!input.disabled) {input.focus();input.select()}}
+    function feedback(ok){try {if (navigator.vibrate) navigator.vibrate(ok ? 60 : [60, 80, 60])} catch (error) {}try {const Audio = window.AudioContext || window.webkitAudioContext;if (!Audio) return;feedback.audio = feedback.audio || new Audio();const context = feedback.audio, tone = context.createOscillator(), gain = context.createGain();tone.frequency.value = ok ? 1320 : 330;gain.gain.value = 0.08;tone.connect(gain);gain.connect(context.destination);tone.start();tone.stop(context.currentTime + (ok ? 0.08 : 0.22))} catch (error) {}}
+    function showScreen(screen){
+      state.screen = screen;
+      ['home','zone','count','find'].forEach(name => el(name + 'Screen').classList.toggle('hidden', name !== screen));
+      el('homeButton').classList.toggle('hidden', screen === 'home');
+      el('screenTitle').textContent = {home:'사무실 재고', zone:'구역 지정', count:'재고 조사', find:'상품 찾기'}[screen];
+      el('search').placeholder = screen === 'find' || screen === 'home' ? '바코드 · 상품명' : '바코드 스캔';
+      el('cameraContinuous').checked = screen === 'zone' || screen === 'count';
+      el('search').value = '';
+      hideResults();clearStatus();
+      if (screen === 'home') stopCamera();
+      if (screen === 'zone') state.zoneRows = null;
+      render();window.scrollTo(0, 0);focusScan();
+    }
+    function render(){
+      const total = products().length;
+      el('loadState').textContent = state.loadingInventory ? '목록 불러오는 중' : (state.loadFailed ? '목록을 받지 못했습니다' : total.toLocaleString('ko-KR') + '개 상품' + (state.data.loadedAt ? ' · ' + String(state.data.loadedAt).slice(11, 16) : ''));
+      if (state.screen === 'home') renderHome();
+      if (state.screen === 'zone') renderZone();
+      if (state.screen === 'count') renderCount();
+      if (state.screen === 'find') {renderBatch();renderLocationFilter();renderInventory()}
+    }
+    function replaceData(next, requestedAt){
+      if (!next || typeof next !== 'object') return;
+      state.data = {...state.data, ...next, products:Array.isArray(next.products) ? next.products : products()};
+      reapplyLocalChanges(requestedAt || Date.now());
+      state.loadingInventory = false;state.loadFailed = false;
+      syncAfterDataChange();
+    }
+    /* 목록을 받는 사이에 이 화면에서 저장한 구역·수량은 받은 목록보다 새것이라 다시 덮어쓴다. */
+    function rememberChange(kind, productCode, value, version){state.recent = [...state.recent.filter(change => Date.now() - change.at < 300000), {at:Date.now(), kind, productCode, value, version}]}
+    function reapplyLocalChanges(since){
+      let list = products();
+      state.recent.filter(change => change.at >= since).forEach(change => {list = change.kind === 'zone' ? withLocation(list, change.productCode, change.value, change.version) : withStock(list, change.productCode, change.value)});
+      state.zoneLog.slice().reverse().filter(entry => entry.status === 'saving').forEach(entry => {list = withLocation(list, entry.productCode, entry.to)});
+      state.data = {...state.data, products:list};
+    }
+    function syncAfterDataChange(){
+      state.batch = state.batch.map(entry => {const latest = products().find(item => itemIdentity(item) === entry.id);return latest ? {...entry, currentStock:Number(latest.currentStock || 0)} : entry});
+      persistBatch();
+      if (state.count) {state.count = syncCountSession(state.count, products());persistCount()}
+      if (state.selected) {const latest = products().find(item => itemIdentity(item) === itemIdentity(state.selected));if (latest) {state.selected = {...state.selected, ...latest};paintSelected()}}
+      render();
+    }
+    function loadInventoryData(){
+      const requestedAt = Date.now();
+      state.loadingInventory = true;render();
+      return callServer('listInventoryAdjustmentData').then(data => {replaceData(data, requestedAt);return true}).catch(error => {
+        state.loadingInventory = false;state.loadFailed = true;render();
+        showStatus(errorText(error, '전체 목록을 불러오지 못했습니다.') + '\n바코드 조회는 계속 쓸 수 있습니다.', 'warn');
+        return false;
+      });
+    }
+    function renderHome(){
+      const notes = [];
+      if (!state.loadingInventory) {const waiting = unassignedItems(products()).length;if (waiting) notes.push('구역 없는 상품 ' + waiting.toLocaleString('ko-KR') + '종이 있습니다. 「구역 지정」에서 넣어 주세요.')}
+      if (state.count) {const progress = countProgress(state.count);notes.push('이어서 할 재고 조사: ' + state.count.zone + ' · ' + progress.total + '종 중 ' + progress.checked + '종 확인')}
+      if (state.batch.length) notes.push('작업 목록에 ' + OPERATION_TEXT[state.operation].title + ' ' + state.batch.length.toLocaleString('ko-KR') + '개 상품이 남아 있습니다.');
+      el('homeNotes').innerHTML = notes.map(text => '<div class="note">' + escapeHtml(text) + '</div>').join('');
+    }
+
+    /* ---------- 스캔 한 번의 흐름 ---------- */
+    function hideResults(){state.visibleCandidates = [];el('results').classList.add('hidden');el('results').innerHTML = ''}
+    function renderResultItems(items, message){
+      const box = el('results');
+      state.visibleCandidates = (items || []).slice(0, 30);
+      box.classList.remove('hidden');
+      if (!state.visibleCandidates.length) {box.innerHTML = '<div class="empty">' + escapeHtml(message || '일치하는 상품이 없습니다.') + '</div>';return}
+      box.innerHTML = state.visibleCandidates.map(item => {
+        const missing = item.blockCode === 'MISSING_STOCK_ROW', blocked = item.adjustable === false && !missing, option = itemOption(item);
+        return '<button type="button" class="result" data-identity="' + escapeHtml(itemIdentity(item)) + '"><span class="result-top"><span><span class="result-name">' + escapeHtml(item.productName || itemCode(item)) + '</span>' + (option ? '<span class="result-option">' + escapeHtml(option) + '</span>' : '') + '</span><span class="result-badges"><span class="pill zone">' + escapeHtml(missing ? '행 없음' : (itemLocation(item) || '미지정')) + '</span><span class="pill ' + (blocked ? 'block' : 'stock') + '">' + (missing ? '행 추가' : (blocked ? '확인 필요' : numberText(item.currentStock))) + '</span></span></span><span class="result-meta">' + escapeHtml(itemCode(item)) + (item.barcode ? ' · ' + escapeHtml(item.barcode) : '') + (blocked ? ' · ' + escapeHtml(blockText(item)) : '') + '</span></button>';
+      }).join('');
+      box.querySelectorAll('button[data-identity]').forEach(button => button.addEventListener('click', () => {
+        const item = [...state.visibleCandidates, ...products()].find(product => itemIdentity(product) === button.dataset.identity);
+        if (!item || state.submitting) return;
+        hideResults();el('search').value = '';
+        useItem(item);
+      }));
+    }
+    function localMatches(query){
+      const words = normalize(query).split(' ').filter(Boolean);
+      if (!words.length) return [];
+      return products().filter(item => {const haystack = normalize([itemCode(item), item.productName, itemOption(item), itemOptionId(item), itemExposureId(item), item.barcode, itemLocation(item)].join(' '));return words.every(word => haystack.includes(word))});
+    }
+    function lookupStatus(result){return String(result && (result.status || result.lookupStatus || result.code) || '').trim().toUpperCase()}
+    function lookupCandidates(result){const candidates = result && (result.candidates || result.items || result.matches);return Array.isArray(candidates) ? candidates : []}
+    function lookupItem(result){return result ? (result.item || result.product || result.inventoryItem || null) : null}
+    /* 스캐너·카메라·직접 입력이 모두 여기로 온다. 구역 라벨이면 구역으로, 아니면 상품으로 처리한다. */
+    function handleScan(rawValue){
+      const value = normalizeScannerQuery(rawValue);
+      if (!value || state.lookingUp || state.submitting) return;
+      const picking = !el('zonePicker').classList.contains('hidden');
+      const zone = parseZoneLabel(value, picking);
+      if (zone) {el('search').value = '';hideResults();useZone(zone);return}
+      if (picking) return;
+      const local = state.loadingInventory ? {type:'none'} : resolveScan(products(), value);
+      if (local.type === 'item') {el('search').value = '';hideResults();useItem(local.item);return}
+      if (local.type === 'ambiguous') {feedback(false);showStatus('같은 값이 여러 상품에 등록되어 있습니다. 아래에서 골라 주세요.', 'warn');renderResultItems(local.candidates);return}
+      performLookup(value);
+    }
+    /* 받아 둔 목록에 없으면 서버에서 정확히 조회한다(다른 옵션ID로 찾는 정상 중복 상품 포함). */
+    function performLookup(value){
+      const input = el('search'), query = normalizeScannerQuery(value == null ? input.value : value);
+      if (!query || state.lookingUp || state.submitting) return;
+      state.lookingUp = true;input.disabled = true;showStatus('장부에서 찾는 중입니다.', 'warn');
+      callServer('lookupInventoryItem', query).then(result => {
+        state.lookingUp = false;input.disabled = false;
+        const status = lookupStatus(result), item = lookupItem(result), candidates = lookupCandidates(result);
+        if (item && (status === 'MISSING_STOCK_ROW' || !status || ['FOUND','OK','SUCCESS','EXACT'].includes(status))) {input.value = '';hideResults();clearStatus();useItem(item);return}
+        feedback(false);
+        if (status.includes('SEARCH') || status.includes('CANDIDATE')) {showStatus((result && result.message) || '상품명 검색 결과입니다. 상품을 골라 주세요.', 'warn');renderResultItems(candidates, '검색 결과가 없습니다.')}
+        else if (status.includes('DUPLICATE')) {showStatus((result && result.message) || '같은 값이 여러 상품에 등록되어 있습니다. 아래 후보를 확인해 주세요.', 'error');renderResultItems(candidates, '후보를 불러오지 못했습니다.')}
+        else if (status.includes('OPTION') || status.includes('SKU') || status.includes('CONFLICT')) {showStatus((result && result.message) || '상품은 있으나 옵션/SKU 관계를 확인해야 합니다.', 'error');renderResultItems(candidates, '고를 수 있는 후보가 없습니다.')}
+        else {showStatus((result && result.message) || '장부에서 일치하는 상품을 찾지 못했습니다. 직접 입력해 다시 찾아 주세요.', 'error');hideResults()}
+        focusScan();
+      }).catch(error => {state.lookingUp = false;input.disabled = false;feedback(false);showStatus(errorText(error, '바코드 조회에 실패했습니다.'), 'error');focusScan()});
+    }
+    function useZone(zone){
+      if (!el('zonePicker').classList.contains('hidden')) {pickZone(zone);return}
+      if (state.screen === 'count') {
+        if (state.count) {feedback(false);showStatus(state.count.zone === zone ? zone + ' 구역을 조사하는 중입니다.' : '지금은 ' + state.count.zone + ' 구역을 조사하는 중입니다. 먼저 반영하거나 조사를 끝내 주세요.', 'warn');return}
+        feedback(true);startCount(zone);return;
+      }
+      feedback(true);
+      if (state.screen !== 'zone') showScreen('zone');
+      setZoneTarget(zone);
+    }
+    function useItem(item){
+      if (state.screen === 'zone') {assignToZone(item);return}
+      if (state.screen === 'count') {
+        if (state.count) {countScanned(item);return}
+        feedback(false);showStatus((item.productName || itemCode(item)) + '\n조사할 구역을 먼저 골라 주세요.' + (itemLocation(item) ? ' 이 상품은 ' + itemLocation(item) + ' 구역에 있습니다.' : ''), 'warn');return;
+      }
+      if (state.screen !== 'find') showScreen('find');
+      if (item.blockCode === 'MISSING_STOCK_ROW') {feedback(false);showMissingStock(item);return}
+      if (el('scanToBatch').checked && item.adjustable !== false) {queueScannedItem(item);return}
+      feedback(item.adjustable !== false);
+      selectProduct(item);
+    }
+
+    /* ---------- 구역 고르기 ---------- */
+    function openZonePicker(title, onPick, allowClear){
+      state.picker = {onPick, letter:''};
+      el('pickerTitle').textContent = title;
+      el('pickerClear').classList.toggle('hidden', !allowClear);
+      renderPicker();
+      el('zonePicker').classList.remove('hidden');
+    }
+    function closeZonePicker(){state.picker = null;el('zonePicker').classList.add('hidden');focusScan()}
+    function pickZone(zone){const picker = state.picker;if (!picker) return;closeZonePicker();if (zone) rememberZone(zone);picker.onPick(zone)}
+    function renderPicker(){
+      const picker = state.picker;if (!picker) return;
+      const totals = new Map();groupInventoryItems(products()).forEach(group => totals.set(group.location, group.itemCount));
+      el('recentZones').innerHTML = picker.letter ? '' : recentZones().map(zone => '<button class="chip" type="button" data-zone="' + zone + '">' + zone + '</button>').join('');
+      el('zoneLetters').classList.toggle('hidden', Boolean(picker.letter));
+      el('zoneNumbers').classList.toggle('hidden', !picker.letter);
+      el('pickerBack').classList.toggle('hidden', !picker.letter);
+      el('zoneLetters').innerHTML = ZONE_LETTERS.map(letter => '<button class="zone-key" type="button" data-letter="' + letter + '">' + letter + '</button>').join('');
+      el('zoneNumbers').innerHTML = picker.letter ? ZONE_NUMBERS.map(number => {const zone = picker.letter + '-' + number, count = totals.get(zone) || 0;return '<button class="zone-key" type="button" data-zone="' + zone + '">' + zone + '<small>' + (count ? count + '종' : '비어 있음') + '</small></button>'}).join('') : '';
+      el('zonePicker').querySelectorAll('[data-letter]').forEach(button => button.addEventListener('click', () => {picker.letter = button.dataset.letter;renderPicker()}));
+      el('zonePicker').querySelectorAll('[data-zone]').forEach(button => button.addEventListener('click', () => pickZone(button.dataset.zone)));
+    }
+
+    /* ---------- 구역 지정 ---------- */
+    function setZoneTarget(zone){state.zoneTarget = zone;state.zonePending = null;rememberZone(zone);showStatus('넣을 구역: ' + zone + ' · 상품을 스캔하세요.', 'ok');renderZone();focusScan()}
+    function assignToZone(item){
+      const plan = planZoneAssign(item, state.zoneTarget), name = (item.productName || itemCode(item)) + (itemOption(item) ? ' · ' + itemOption(item) : '');
+      state.zonePending = null;
+      if (plan.action === 'missing') {feedback(false);showStatus(name + '\noffice 재고 행이 없습니다. 「상품 찾기」에서 행을 추가한 뒤 구역을 넣어 주세요.', 'error')}
+      else if (plan.action === 'blocked') {feedback(false);showStatus(name + '\n' + plan.reason + ' 저장하지 않았습니다.', 'error')}
+      else if (plan.action === 'needZone') {feedback(true);openZonePicker('넣을 구역 고르기', zone => {setZoneTarget(zone);assignToZone(item)}, false)}
+      else if (plan.action === 'same') {feedback(true);showStatus(name + '\n이미 ' + state.zoneTarget + ' 구역에 있습니다.', 'ok')}
+      else if (plan.action === 'confirmMove') {feedback(false);state.zonePending = {item, from:plan.from};clearStatus()}
+      else if (plan.action === 'save') {feedback(true);saveLocation(item, state.zoneTarget);showStatus(name + '\n' + state.zoneTarget + ' 구역에 넣었습니다.', 'ok')}
+      renderZone();focusScan();
+    }
+    /* 구역 저장은 화면을 막지 않고 뒤에서 한 건씩 보낸다. */
+    /* from은 이 화면이 지금 보고 있는 구역이다. 서버는 장부 구역이 from과 다르면(그 사이 다른 사람이 바꿈) 쓰지 않는다.
+       version(화면이 본 구역 버전)은 처음 보낼 때 정해 두고, 「다시 시도」도 같은 값으로 보낸다. */
+    function saveLocation(item, zone, undoOf){
+      const shown = products().find(product => itemIdentity(product) === itemIdentity(item)) || item;
+      const entry = {id:makeRequestId(), key:itemIdentity(item), productCode:itemCode(item), optionId:itemOptionId(item), name:String(item.productName || itemCode(item)), option:itemOption(item), from:itemLocation(shown), to:zone, version:null, status:'saving', message:'', undoOf:undoOf || ''};
+      state.data = {...state.data, products:withLocation(products(), entry.productCode, zone)};
+      state.zoneLog = [entry, ...state.zoneLog].slice(0, 60);
+      state.zoneQueue.push(entry);
+      pumpZoneQueue();
+      return entry;
+    }
+    /* 실패한 구역 저장을 같은 요청번호·같은 예전 구역으로 다시 보낸다. 새 번호로 보내면 그 사이 다른 사람의 변경을 덮어쓸 수 있다. */
+    function retryLocation(entry){
+      if (!entry || entry.status !== 'failed') return false;
+      entry.status = 'saving';entry.message = '';
+      if (entry.undoOf) {const original = state.zoneLog.find(log => log.id === entry.undoOf);if (original && original.status === 'saved') original.status = 'undone'}
+      state.data = {...state.data, products:withLocation(products(), entry.productCode, entry.to)};
+      state.zoneQueue.push(entry);
+      pumpZoneQueue();
+      return true;
+    }
+    function pumpZoneQueue(){
+      if (state.zoneBusy) return;
+      const entry = state.zoneQueue.shift();
+      if (!entry) return;
+      state.zoneBusy = true;
+      /* 버전을 모르는 채 보낸 요청은 서버가 쓰지 않으므로, 그때는 다음에 보낼 때 다시 읽어도 된다. */
+      if (entry.version == null) entry.version = itemLocationVersion(products().find(item => itemCode(item) === entry.productCode));
+      callServer('updateInventoryLocation', locationPayload(entry.productCode, entry.optionId, entry.to, entry.id, entry.from, entry.version)).then(result => {
+        const saved = result && typeof result.location === 'string' ? result.location : entry.to;
+        const version = itemLocationVersion(result);
+        entry.status = 'saved';entry.message = '';
+        state.data = {...state.data, products:withLocation(products(), entry.productCode, saved, version)};
+        rememberChange('zone', entry.productCode, saved, version);
+        if (entry.undoOf) {const original = state.zoneLog.find(log => log.id === entry.undoOf);if (original) original.status = 'undone'}
+      }).catch(error => {
+        entry.status = 'failed';entry.message = errorText(error, '구역 저장에 실패했습니다.');
+        const current = products().find(item => itemCode(item) === entry.productCode);
+        if (current && itemLocation(current) === entry.to) state.data = {...state.data, products:withLocation(products(), entry.productCode, entry.from)};
+        if (entry.undoOf) {const original = state.zoneLog.find(log => log.id === entry.undoOf);if (original && original.status === 'undone') original.status = 'saved'}
+        state.stale = true;
+        feedback(false);showStatus(entry.name + '\n' + entry.message, 'error');
+      }).then(() => {state.zoneBusy = false;syncAfterDataChange();pumpZoneQueue();refreshQuietly()});
+    }
+    /* 저장·반영이 실패하면 화면의 구역·수량이 장부와 다를 수 있다. 대기 중인 저장이 끝난 뒤 목록을 조용히 다시 받는다(실패해도 화면은 그대로). */
+    function refreshQuietly(){
+      if (!state.stale || state.refreshing || state.loadingInventory || busy()) return;
+      state.stale = false;state.refreshing = true;
+      const requestedAt = Date.now();
+      callServer('listInventoryAdjustmentData').then(data => {state.refreshing = false;replaceData(data, requestedAt)}).catch(() => {state.refreshing = false});
+    }
+    function zoneText(zone){return zone || '미지정'}
+    function renderZone(){
+      el('zoneTargetValue').textContent = state.zoneTarget || '미선택';
+      el('changeZoneTarget').textContent = state.zoneTarget ? '구역 바꾸기' : '구역 고르기';
+      const pending = state.zonePending;
+      el('zoneConfirm').classList.toggle('hidden', !pending);
+      if (pending) el('zoneConfirmText').textContent = (pending.item.productName || itemCode(pending.item)) + (itemOption(pending.item) ? ' · ' + itemOption(pending.item) : '') + '\n지금 ' + pending.from + ' 구역에 있습니다. ' + state.zoneTarget + ' 구역으로 옮길까요?';
+      el('zoneConfirmText').style.whiteSpace = 'pre-line';
+      const log = state.zoneLog.filter(entry => !entry.undoOf || entry.status !== 'saved');
+      el('zoneLogCount').textContent = log.length ? log.length + '건' : '';
+      el('zoneLog').innerHTML = log.length ? log.map(entry => {
+        const label = {saving:'저장 중', saved:'저장됨', failed:'실패', undone:'되돌림'}[entry.status];
+        const button = entry.status === 'saved' && !entry.undoOf ? '<button class="row-button plain" type="button" data-undo="' + entry.id + '">되돌리기</button>' : (entry.status === 'failed' ? '<button class="row-button" type="button" data-retry="' + entry.id + '">다시 시도</button>' : '');
+        return '<div class="row"><div><div class="row-name">' + escapeHtml(entry.name) + '</div><div class="row-sub">' + escapeHtml(entry.option || '옵션명 미등록') + '</div><div class="log-state ' + entry.status + '">' + escapeHtml(zoneText(entry.from)) + ' → ' + escapeHtml(zoneText(entry.to)) + ' · ' + label + (entry.message ? ' · ' + escapeHtml(entry.message) : '') + '</div></div>' + button + '</div>';
+      }).join('') : '<div class="empty">아직 넣은 상품이 없습니다.</div>';
+      el('zoneLog').querySelectorAll('[data-undo]').forEach(button => button.addEventListener('click', () => {
+        const entry = state.zoneLog.find(log => log.id === button.dataset.undo), item = entry && products().find(product => itemIdentity(product) === entry.key);
+        if (!entry || !item || entry.status !== 'saved') return;
+        state.zoneLog = state.zoneLog.filter(log => !(log.undoOf === entry.id && log.status === 'failed'));
+        entry.status = 'undone';saveLocation(item, entry.from, entry.id);showStatus(entry.name + '\n' + zoneText(entry.from) + '(으)로 되돌립니다.', 'warn');renderZone();
+      }));
+      el('zoneLog').querySelectorAll('[data-retry]').forEach(button => button.addEventListener('click', () => {
+        if (retryLocation(state.zoneLog.find(log => log.id === button.dataset.retry))) renderZone();
+      }));
+      const waiting = state.loadingInventory ? [] : unassignedItems(products());
+      /* 넣은 상품을 목록에서 바로 빼면 아랫줄이 손가락 밑으로 올라와 잘못 눌린다. 이 화면에 있는 동안은 자리를 지키고 「넣음」으로만 바꾼다. */
+      if (!state.loadingInventory) {const known = state.zoneRows || [];state.zoneRows = [...known, ...waiting.map(itemIdentity).filter(identity => !known.includes(identity))]}
+      const rows = (state.zoneRows || []).map(identity => products().find(product => itemIdentity(product) === identity)).filter(Boolean), visible = rows.slice(0, state.unassignedLimit);
+      el('unassignedCount').textContent = state.loadingInventory ? '불러오는 중' : waiting.length.toLocaleString('ko-KR') + '종';
+      el('unassignedList').innerHTML = visible.length ? visible.map(item => {
+        const placed = itemLocation(item);
+        return '<div class="row' + (placed ? ' placed' : '') + '" data-row="' + escapeHtml(itemIdentity(item)) + '"><div><div class="row-name">' + escapeHtml(item.productName || itemCode(item)) + '</div><div class="row-sub">' + escapeHtml(itemOption(item) || '옵션명 미등록') + ' · 재고 ' + numberText(item.currentStock) + (item.barcode ? ' · ' + escapeHtml(item.barcode) : '') + '</div></div>' + (placed ? '<span class="pill zone">' + escapeHtml(placed) + '에 넣음</span>' : '<button class="row-button" type="button" data-assign="' + escapeHtml(itemIdentity(item)) + '">' + (state.zoneTarget ? escapeHtml(state.zoneTarget) + '에 넣기' : '구역 고르기') + '</button>') + '</div>';
+      }).join('') : '<div class="empty">' + (state.loadingInventory ? '목록을 불러오는 중입니다.' : '구역 없는 상품이 없습니다.') + '</div>';
+      el('unassignedMore').classList.toggle('hidden', visible.length >= rows.length);
+      el('unassignedList').querySelectorAll('[data-assign]').forEach(button => button.addEventListener('click', () => {
+        const item = products().find(product => itemIdentity(product) === button.dataset.assign);
+        if (!item) return;
+        /* 위쪽 안내·기록이 늘어나도 누른 줄이 같은 자리에 있도록 화면을 그만큼 따라 내린다. */
+        const top = button.closest('.row').getBoundingClientRect().top;
+        assignToZone(item);
+        const row = [...el('unassignedList').querySelectorAll('[data-row]')].find(node => node.dataset.row === button.dataset.assign);
+        if (row) window.scrollBy(0, row.getBoundingClientRect().top - top);
+      }));
+    }
+
+    /* ---------- 재고 조사 ---------- */
+    function startCount(zone){
+      if (state.countLoading) return;
+      state.countLoading = true;showStatus(zone + ' 구역 장부를 새로 받는 중입니다.', 'warn');
+      loadInventoryData().then(ok => {
+        state.countLoading = false;
+        if (!ok) return;
+        state.count = createCountSession(zone, products(), todayText());state.countFocus = '';state.countExtra = null;state.countReviewing = false;
+        persistCount();rememberZone(zone);el('countResult').classList.add('hidden');
+        showStatus(zone + ' 구역 ' + state.count.rows.length + '종입니다. 맞으면 「맞음」, 다르면 센 수량을 넣어 주세요.', 'ok');
+        renderCount();window.scrollTo(0, 0);focusScan();
+      });
+    }
+    function updateCount(id, counted){
+      if (!state.count || state.submitting) return;
+      state.count = setCountRow(state.count, id, counted, makeRequestId);state.countReviewing = false;persistCount();renderCount();
+    }
+    function countScanned(item){
+      const id = itemIdentity(item), row = state.count.rows.find(entry => entry.id === id);
+      state.countExtra = null;
+      if (item.blockCode === 'MISSING_STOCK_ROW' || item.adjustable === false) {feedback(false);showStatus((item.productName || itemCode(item)) + '\n' + blockText(item) + ' 세지 않았습니다.', 'error');renderCount();return}
+      if (!row) {feedback(false);state.countExtra = item;clearStatus();renderCount();el('countExtra').scrollIntoView({block:'center'});return}
+      feedback(true);state.countFocus = id;clearStatus();renderCount();
+      const target = el('countRows').querySelector('[data-row="' + CSS.escape(id) + '"]');
+      if (target) {target.scrollIntoView({block:'center'});if (!TOUCH) {const input = target.querySelector('.count-input');if (input) {input.focus();input.select()}}}
+    }
+    function countRowHtml(row){
+      const pending = Boolean(row.needsReconciliation), checked = row.counted != null, matched = checked && !pending && row.counted === row.ledger, changed = !pending && row.changedFrom != null, moved = !pending && row.movedFrom != null && checked && !matched, disabled = state.submitting || row.blocked || pending ? ' disabled' : '';
+      const movedText = moved ? '세는 동안 장부 구역이 ' + zoneText(row.movedFrom) + ' → ' + zoneText(row.location) + '(으)로 바뀌었습니다.' : '';
+      const cls = 'count-row' + (row.blocked ? ' blocked' : (pending || changed || moved ? ' changed' : (matched ? ' matched' : (checked ? ' diff' : '')))) + (state.countFocus === row.id ? ' focus' : '');
+      const delta = checked ? row.counted - row.ledger : 0;
+      const note = row.blocked ? '장부 확인이 필요해 셀 수 없습니다.' : pending ? '센 수량 ' + numberText(row.counted) + ' 반영 기록은 남았지만 현재고 검증이 끝나지 않았습니다. 다시 반영하지 않습니다. 「검증 다시 확인」을 눌러 주세요. 계속 같으면 장부(재고변동이력)를 확인해야 합니다.' : (changed ? '세는 동안 장부가 ' + numberText(row.changedFrom) + ' → ' + numberText(row.ledger) + '로 바뀌었습니다.' + (moved ? ' ' + movedText : '') + ' 다시 세어 주세요.' : (moved ? movedText + ' 여기 있는 것이 맞으면 다시 세어 주세요.' : (matched ? '맞음' : (checked ? '실제 ' + numberText(row.counted) + ' (' + (delta > 0 ? '+' : '') + delta.toLocaleString('ko-KR') + ')' : ''))));
+      return '<div class="' + cls + '" data-row="' + escapeHtml(row.id) + '"><div><div class="row-name">' + escapeHtml(row.productName) + '</div><div class="row-sub">' + escapeHtml(row.optionName || '옵션명 미등록') + (row.extra ? ' · 장부 구역 ' + escapeHtml(zoneText(row.location)) : '') + '</div><div class="count-ledger">장부 ' + numberText(row.ledger) + '</div>' + (note ? '<div class="count-note">' + escapeHtml(note) + '</div>' : '') + (pending ? '<button class="row-button" type="button" data-recheck="' + escapeHtml(row.id) + '"' + (state.submitting ? ' disabled' : '') + '>검증 다시 확인</button>' : '') + ((changed || moved) && checked && !row.blocked ? '<button class="row-button" type="button" data-reconfirm="' + escapeHtml(row.id) + '"' + disabled + '>센 수량 ' + numberText(row.counted) + ' 그대로</button>' : '') + '</div><div class="count-controls"><button class="count-match" type="button" data-match="' + escapeHtml(row.id) + '"' + disabled + '>맞음</button><button class="count-step" type="button" data-step="-1" data-id="' + escapeHtml(row.id) + '"' + disabled + ' aria-label="하나 빼기">−</button><input class="count-input" type="number" min="0" max="999999" step="1" inputmode="numeric" data-count="' + escapeHtml(row.id) + '" value="' + (checked ? row.counted : '') + '" placeholder="수량"' + disabled + '><button class="count-step" type="button" data-step="1" data-id="' + escapeHtml(row.id) + '"' + disabled + ' aria-label="하나 더하기">+</button></div></div>';
+    }
+    function renderCount(){
+      const session = state.count;
+      el('countZones').classList.toggle('hidden', Boolean(session));
+      el('countSession').classList.toggle('hidden', !session);
+      if (!session) {
+        const dates = countDates(), groups = state.loadingInventory ? [] : groupInventoryItems(selectInventoryItems(products(), {sort:'LOCATION'})).filter(group => group.location);
+        el('countZoneCount').textContent = state.loadingInventory ? '불러오는 중' : groups.length + '개 구역';
+        el('pickCountZone').disabled = state.countLoading;
+        el('countZoneList').innerHTML = groups.length ? groups.map(group => '<div class="row"><div><div class="row-name">' + escapeHtml(group.location) + '</div><div class="row-sub">' + group.itemCount.toLocaleString('ko-KR') + '종 · 재고 ' + numberText(group.stockTotal) + ' · 마지막 조사 ' + escapeHtml(dates[group.location] || '기록 없음') + '</div></div><button class="row-button" type="button" data-count-zone="' + escapeHtml(group.location) + '"' + (state.countLoading ? ' disabled' : '') + '>조사 시작</button></div>').join('') : '<div class="empty">' + (state.loadingInventory ? '목록을 불러오는 중입니다.' : '구역이 지정된 상품이 없습니다.') + '</div>';
+        el('countZoneList').querySelectorAll('[data-count-zone]').forEach(button => button.addEventListener('click', () => startCount(button.dataset.countZone)));
+        return;
+      }
+      const progress = countProgress(session), differences = countDifferences(session), unresolved = countUnresolved(session), locked = state.submitting;
+      el('countZoneTitle').textContent = session.zone + ' 재고 조사';
+      el('countProgress').textContent = progress.total + '종 중 ' + progress.checked + '종 확인 · 차이 ' + progress.diff + '종' + (progress.pending ? ' · 검증 대기 ' + progress.pending + '종' : '');
+      const extra = state.countExtra;
+      el('countExtra').classList.toggle('hidden', !extra);
+      if (extra) {el('countExtraText').style.whiteSpace = 'pre-line';el('countExtraText').textContent = (extra.productName || itemCode(extra)) + (itemOption(extra) ? ' · ' + itemOption(extra) : '') + '\n장부에는 ' + zoneText(itemLocation(extra)) + ' 구역으로 되어 있습니다.'}
+      el('countRows').innerHTML = session.rows.length ? session.rows.map(countRowHtml).join('') : '<div class="empty">이 구역에 장부상 상품이 없습니다. 상품을 스캔하면 여기에 추가할 수 있습니다.</div>';
+      el('countRows').querySelectorAll('[data-match]').forEach(button => button.addEventListener('click', () => {const row = state.count.rows.find(entry => entry.id === button.dataset.match);if (row) updateCount(row.id, row.ledger)}));
+      /* 표시가 붙은 줄을 같은 수량으로 다시 확인한다(새 요청번호가 붙는다). */
+      el('countRows').querySelectorAll('[data-reconfirm]').forEach(button => button.addEventListener('click', () => {const row = state.count.rows.find(entry => entry.id === button.dataset.reconfirm);if (row && row.counted != null) updateCount(row.id, row.counted)}));
+      /* 검증이 끝나지 않은 줄은 같은 요청번호로 다시 확인만 한다(서버는 새로 쓰지 않는다). */
+      el('countRows').querySelectorAll('[data-recheck]').forEach(button => button.addEventListener('click', () => recheckCount(button.dataset.recheck)));
+      el('countRows').querySelectorAll('[data-count]').forEach(input => input.addEventListener('change', () => updateCount(input.dataset.count, input.value)));
+      el('countRows').querySelectorAll('[data-step]').forEach(button => button.addEventListener('click', () => {const row = state.count.rows.find(entry => entry.id === button.dataset.id);if (!row) return;const base = row.counted == null ? row.ledger : row.counted;updateCount(row.id, Math.max(0, Math.min(MAX_QUANTITY, base + Number(button.dataset.step))))}));
+      el('reviewCountButton').textContent = differences.length ? '차이 ' + differences.length + '건 반영' : '차이 없음';
+      el('reviewCountButton').disabled = !differences.length || locked || state.countLoading || busy();
+      el('finishCountButton').disabled = locked || differences.length > 0 || progress.pending > 0;
+      el('finishCountButton').textContent = progress.checked < progress.total ? '조사 끝내기 (안 센 상품 ' + (progress.total - progress.checked) + '종)' : '조사 끝내기';
+      el('quitCountButton').disabled = locked;
+      el('countReview').classList.toggle('hidden', !state.countReviewing);
+      el('countReviewList').innerHTML = differences.map(row => {const delta = row.counted - row.ledger;return '<div class="review-row' + (row.changedFrom != null || row.movedFrom != null ? ' invalid' : '') + '"><div><strong>' + escapeHtml(row.productName) + '</strong><div class="row-sub">' + escapeHtml(row.optionName || '옵션명 미등록') + (row.location !== session.zone ? ' · 장부 구역 ' + escapeHtml(zoneText(row.location)) : '') + (row.changedFrom != null ? ' · 세는 동안 장부가 바뀜' : '') + (row.movedFrom != null ? ' · 세는 동안 구역이 바뀜' : '') + '</div></div><div class="review-change">' + numberText(row.ledger) + ' → ' + numberText(row.counted) + ' (' + (delta > 0 ? '+' : '') + delta.toLocaleString('ko-KR') + ')</div></div>'}).join('');
+      el('countReviewWarning').textContent = unresolved.length ? '세는 동안 장부(수량·구역)가 바뀐 상품이 ' + unresolved.length + '종 있습니다. 목록에서 「센 수량 그대로」를 누르거나 다시 세어 확인해 주세요.' : '';
+      el('countReviewWarning').classList.toggle('hidden', !unresolved.length);
+      el('confirmCountButton').disabled = !differences.length || unresolved.length > 0 || locked;
+      el('cancelCountReview').disabled = locked;
+    }
+    /* 반영 전에 장부를 한 번 더 받아, 세는 동안 수량이나 구역이 바뀐 줄이 있으면 그 줄을 다시 확인받는다. */
+    function openCountReview(){
+      if (!state.count || state.submitting || state.countLoading || busy()) return;
+      state.countLoading = true;renderCount();showStatus('장부를 새로 받아 차이를 확인하는 중입니다.', 'warn');
+      loadInventoryData().then(ok => {
+        state.countLoading = false;
+        if (!ok) {renderCount();return}
+        state.countReviewing = countDifferences(state.count).length > 0;
+        clearStatus();renderCount();
+        if (state.countReviewing) el('countReview').scrollIntoView({block:'nearest'});else showStatus('새로 받은 장부와 차이가 없습니다.', 'ok');
+      });
+    }
+    function confirmCount(){
+      if (!state.count || state.submitting || busy()) return;
+      const session = state.count, rows = countDifferences(session);
+      if (!rows.length || countUnresolved(session).length) return;
+      state.submitting = true;renderCount();showStatus('차이를 순서대로 반영하고 있습니다. 화면을 닫지 마세요.', 'warn');
+      const warnings = [];
+      runBatchSequential(rows, payload => callServer('submitInventoryOperation', payload), (row, result) => {
+        const after = verifiedAfterStock(result);
+        if (result && result.alreadyApplied) warnings.push(row.productName + ' · 이미 반영된 요청 · ' + row.requestId);
+        /* 검증된 응답만 화면 수량에 반영한다. 검증되지 않은 줄은 잠그고(새 요청번호를 주지 않는다) 장부를 다시 받는다. */
+        if (after == null) {warnings.push(row.productName + ' · 현재고 검증 필요(다시 반영하지 않음) · ' + row.requestId);state.stale = true}
+        else {state.data = {...state.data, products:withStock(products(), row.productCode, after)};rememberChange('stock', row.productCode, after)}
+        state.count = applyCountResult(state.count, row.id, result, makeRequestId);
+        persistCount();
+      }, row => countPayload(row, session.zone)).then(outcome => {
+        state.submitting = false;state.countReviewing = false;
+        const done = outcome.completed.length, box = el('countResult');
+        if (outcome.failed) {
+          const message = errorText(outcome.error, '재고 반영에 실패했습니다.');
+          box.textContent = '성공 ' + done + '건 · 실패 지점에서 멈춤' + (warnings.length ? '\n' + warnings.join('\n') : '') + '\n' + outcome.failed.productName + ': ' + message + '\n남은 차이는 목록에 그대로 있습니다.';
+          box.className = 'result-box warn';feedback(false);showStatus(message, 'error');state.stale = true;
+        } else {
+          box.textContent = '차이 ' + done + '건 반영 완료' + (warnings.length ? '\n' + warnings.join('\n') : '');
+          box.className = 'result-box' + (warnings.length ? ' warn' : '');
+          showStatus(countPendingChecks(state.count).length ? '현재고 검증이 끝나지 않은 줄이 있습니다. 그 줄의 「검증 다시 확인」을 눌러 주세요.' : (warnings.length ? '반영은 끝났지만 확인이 필요한 응답이 있습니다.' : '차이를 모두 반영했습니다. 「조사 끝내기」를 눌러 마무리하세요.'), warnings.length ? 'warn' : 'ok');
+        }
+        syncAfterDataChange();refreshQuietly();
+      });
+    }
+    /* 검증이 끝나지 않은 줄을 같은 요청번호·같은 내용으로 다시 보낸다. 서버는 이미 기록된 요청이면 쓰지 않고 지금 검증 결과만 답한다. */
+    function recheckCount(id){
+      if (!state.count || state.submitting || busy()) return;
+      const session = state.count, row = session.rows.find(entry => entry.id === id);
+      if (!row || !row.needsReconciliation) return;
+      state.submitting = true;renderCount();showStatus('반영 기록을 다시 확인하고 있습니다.', 'warn');
+      callServer('submitInventoryOperation', countPayload(row, session.zone)).then(result => {
+        const after = verifiedAfterStock(result);
+        state.submitting = false;
+        if (state.count) {state.count = applyCountResult(state.count, row.id, result, makeRequestId);persistCount()}
+        if (after == null) {state.stale = true;feedback(false);showStatus(row.productName + '\n아직 현재고 검증이 끝나지 않았습니다. 다시 반영하지 않았습니다. 장부(재고변동이력)를 확인해 주세요.', 'warn')}
+        else {state.data = {...state.data, products:withStock(products(), row.productCode, after)};rememberChange('stock', row.productCode, after);showStatus(row.productName + '\n현재고 ' + numberText(after) + ' 검증을 확인했습니다.', 'ok')}
+        syncAfterDataChange();renderCount();refreshQuietly();
+      }).catch(error => {
+        state.submitting = false;state.stale = true;
+        feedback(false);showStatus(row.productName + '\n' + errorText(error, '검증을 다시 확인하지 못했습니다.'), 'error');
+        renderCount();refreshQuietly();
+      });
+    }
+    function finishCount(){
+      if (!state.count || state.submitting || countDifferences(state.count).length || countPendingChecks(state.count).length) return;
+      const progress = countProgress(state.count), zone = state.count.zone;
+      if (progress.total && progress.checked === progress.total) {const dates = countDates();dates[zone] = todayText();writeJsonStorage(STORAGE, COUNT_DATE_KEY, dates)}
+      state.count = null;state.countExtra = null;state.countReviewing = false;persistCount();
+      showStatus(zone + ' 구역 조사를 끝냈습니다.' + (progress.checked < progress.total ? ' 안 센 상품이 있어 조사일은 기록하지 않았습니다.' : ''), 'ok');
+      el('countQuit').classList.add('hidden');renderCount();window.scrollTo(0, 0);
+    }
+
+    /* ---------- 상품 찾기 · 입고 · 출고 ---------- */
+    function hideProductPanels(){el('missingStock').classList.add('hidden');el('selected').classList.add('hidden');el('form').classList.add('hidden');el('createStockConfirm').classList.add('hidden')}
+    function showMissingStock(item){
+      state.selected = item;state.requestId = makeRequestId();hideProductPanels();
+      el('missingName').textContent = item.productName || itemCode(item);el('missingOption').textContent = itemOption(item) || '옵션명 미등록';
+      el('missingCode').textContent = itemCode(item) || '-';el('missingOptionId').textContent = itemOptionId(item) || '-';el('missingBarcode').textContent = item.barcode || '-';
+      el('missingStock').classList.remove('hidden');showStatus('office 재고 행이 없는 상품입니다.', 'warn');
+    }
+    function createStockRow(){
+      if (state.submitting || !state.selected || state.selected.blockCode !== 'MISSING_STOCK_ROW' || state.creatingStock) return;
+      state.creatingStock = true;el('createStockConfirm').classList.add('hidden');renderBatch();showStatus('office 재고 행을 만들고 수식을 확인하는 중입니다.', 'warn');
+      const payload = {productCode:itemCode(state.selected), optionId:itemOptionId(state.selected), requestId:state.requestId || makeRequestId()}, requestedAt = Date.now();
+      google.script.run.withSuccessHandler(result => {
+        state.creatingStock = false;
+        if (result && result.data) replaceData(result.data, requestedAt);
+        const item = lookupItem(result) || products().find(candidate => itemIdentity(candidate) === itemIdentity(state.selected));
+        if (!item || item.adjustable === false) {renderBatch();showStatus((result && result.warning) || '행은 만들어졌지만 수식 결과를 확인해야 합니다.', 'error');return}
+        selectProduct(item);showStatus(result && result.alreadyExisting ? '이미 office 재고 행이 있어 기존 행을 불러왔습니다.' : 'office 재고 행을 추가했습니다. 구역이나 재고 작업을 이어가세요.', 'ok');
+      }).withFailureHandler(error => {state.creatingStock = false;renderBatch();showStatus(errorText(error, 'office 재고 행 추가에 실패했습니다.'), 'error')}).createOfficeStockRow(payload);
+    }
+    function paintSelected(){
+      const item = state.selected;if (!item || item.blockCode === 'MISSING_STOCK_ROW') return;
+      el('selectedName').textContent = item.productName || itemCode(item);el('selectedOption').textContent = itemOption(item) || '옵션명 미등록';
+      el('selectedCode').textContent = itemCode(item) || '-';el('selectedOptionId').textContent = itemOptionId(item) || '-';el('selectedBarcode').textContent = item.barcode || '-';
+      el('currentStock').textContent = numberText(item.currentStock);el('currentLocation').textContent = itemLocation(item) || '미지정';updatePreview();
+    }
+    function selectProduct(item){
+      if (!item || item.adjustable === false) {if (item && item.blockCode === 'MISSING_STOCK_ROW') {showMissingStock(item);return}showStatus((item ? (item.productName || itemCode(item)) + '\n' : '') + blockText(item), 'error');return}
+      state.selected = item;state.requestId = makeRequestId();hideProductPanels();
+      el('selected').classList.remove('hidden');el('quantity').value = '';el('memo').value = '';
+      document.querySelectorAll('.action[data-operation]').forEach(button => button.classList.remove('active'));
+      paintSelected();clearStatus();el('selected').scrollIntoView({block:'nearest'});
+    }
+    function setOperation(operation, confirmed){
+      if (state.submitting) return;
+      const decision = changeBatchOperation(state.batch, state.operation, operation, confirmed);
+      if (decision.requiresConfirmation) {state.pendingOperation = operation;el('operationChangeMessage').textContent = '작업 목록 ' + state.batch.length.toLocaleString('ko-KR') + '개(' + OPERATION_TEXT[state.operation].title + ')를 비우고 ' + OPERATION_TEXT[operation].title + '(으)로 바꿀까요?';el('operationChangeConfirm').classList.remove('hidden');return}
+      state.operation = decision.operation;state.batch = decision.items;state.pendingOperation = '';state.reviewingBatch = false;
+      el('operationChangeConfirm').classList.add('hidden');persistBatch();paintOperation();renderBatch();
+    }
+    function paintOperation(){
+      const text = OPERATION_TEXT[state.operation];
+      el('operationTitle').textContent = text.title;el('quantityLabel').textContent = text.label;el('operationHint').textContent = text.hint;
+      el('submitButton').classList.toggle('outbound', state.operation === 'OUTBOUND');el('reviewBatchButton').classList.toggle('outbound', state.operation === 'OUTBOUND');
+      el('quantity').min = state.operation === 'COUNT' ? '0' : '1';el('quantity').placeholder = state.operation === 'COUNT' ? '0~999999' : '1~999999';
+    }
+    function openOperationForm(operation){
+      if (!state.selected || state.submitting) return;
+      setOperation(operation, false);
+      if (state.operation !== operation) return;
+      document.querySelectorAll('.action[data-operation]').forEach(button => button.classList.toggle('active', button.dataset.operation === operation));
+      el('form').classList.remove('hidden');el('quantity').value = '';updatePreview();el('quantity').focus();
+    }
+    function quantityValue(){const raw = String(el('quantity').value || '').trim();return raw === '' ? null : Number(raw)}
+    function validateQuantity(){
+      const quantity = quantityValue(), minimum = state.operation === 'COUNT' ? 0 : 1;
+      if (quantity == null) return {error:'수량을 입력해 주세요.'};
+      if (!Number.isInteger(quantity)) return {error:'수량은 정수로 입력해 주세요.'};
+      if (quantity < minimum) return {error:state.operation === 'COUNT' ? '실재고는 0 이상의 정수로 입력해 주세요.' : '수량은 1 이상의 정수로 입력해 주세요.'};
+      if (quantity > MAX_QUANTITY) return {error:'수량은 999,999 이하로 입력해 주세요.'};
+      const after = calculateBatchAfter({currentStock:state.selected.currentStock, quantity, operation:state.operation});
+      if (after < 0) return {error:'현재고보다 많이 출고할 수 없습니다.'};
+      return {quantity, after};
+    }
+    function updatePreview(){if (!state.selected) return;const validation = validateQuantity();el('beforePreview').textContent = numberText(state.selected.currentStock);el('afterPreview').textContent = validation.error ? '-' : numberText(validation.after)}
+    function submitOperation(){
+      if (!state.selected || state.submitting) return;
+      const validation = validateQuantity();
+      if (validation.error) {showStatus(validation.error, 'error');el('quantity').focus();return}
+      const outcome = upsertBatchItem(state.batch, state.selected, state.operation, validation.quantity, el('memo').value, () => state.requestId || makeRequestId());
+      if (outcome.error) {showStatus(outcome.error, 'error');return}
+      state.batch = outcome.items;state.reviewingBatch = false;persistBatch();renderBatch();
+      showStatus((state.selected.productName || itemCode(state.selected)) + ' · ' + OPERATION_TEXT[state.operation].title + ' ' + numberText(validation.quantity) + ' 작업 목록에 담았습니다.', 'ok');
+      resetForNextScan();
+    }
+    function queueScannedItem(item){
+      const outcome = addScannedBatchItem(state.batch, item, state.operation, makeRequestId);
+      if (outcome.error) {feedback(false);showStatus(outcome.error, 'error');focusScan();return}
+      feedback(true);state.batch = outcome.items;state.reviewingBatch = false;persistBatch();renderBatch();
+      showStatus((item.productName || itemCode(item)) + ' · ' + OPERATION_TEXT[state.operation].title + ' ' + numberText(outcome.item.quantity) + ' 작업 목록에 담았습니다.', 'ok');
+      resetForNextScan();
+    }
+    function resetForNextScan(){state.selected = null;state.requestId = '';hideProductPanels();el('search').value = '';el('quantity').value = '';el('memo').value = '';hideResults();focusScan()}
+    function batchRowHtml(item, index){
+      const validation = validateBatchItem(item), after = validation.error ? '확인 필요' : numberText(validation.after), minimum = item.operation === 'COUNT' ? 0 : 1, disabled = state.submitting ? ' disabled' : '';
+      return '<article class="batch-row"><div><div class="row-name">' + escapeHtml(item.productName || item.productCode) + '</div><div class="row-sub">' + escapeHtml(item.optionName || '옵션명 미등록') + ' · ' + escapeHtml(item.productCode) + '</div><div class="batch-after' + (validation.error ? ' invalid' : '') + '">' + numberText(item.currentStock) + ' → ' + after + (validation.error ? ' · ' + escapeHtml(validation.error) : '') + '</div></div><label><span class="toolbar-label">수량</span><input class="batch-quantity" data-batch-quantity="' + index + '" type="number" min="' + minimum + '" max="999999" step="1" inputmode="numeric" value="' + escapeHtml(item.quantity) + '"' + disabled + '></label><button class="batch-remove" data-batch-remove="' + index + '" type="button"' + disabled + '>삭제</button></article>';
+    }
+    function reviewRowHtml(item){const validation = validateBatchItem(item);return '<div class="review-row' + (validation.error ? ' invalid' : '') + '"><div><strong>' + escapeHtml(item.productName || item.productCode) + '</strong><div class="row-sub">' + escapeHtml(item.optionName || '옵션명 미등록') + ' · ' + escapeHtml(OPERATION_TEXT[item.operation].title) + ' ' + numberText(item.quantity) + '</div></div><div class="review-change">' + numberText(item.currentStock) + ' → ' + (validation.error ? escapeHtml(validation.error) : numberText(validation.after)) + '</div></div>'}
+    /* 반영하는 동안에는 상품 선택·입력·구역 저장·행 추가를 모두 잠근다. */
+    function renderBatch(){
+      const list = el('batchList'), invalid = state.batch.filter(item => validateBatchItem(item).error), locked = state.submitting, otherWrite = busy() || state.creatingStock;
+      paintOperation();
+      el('batchCount').textContent = state.batch.length.toLocaleString('ko-KR') + '개 상품';
+      list.innerHTML = state.batch.length ? state.batch.map(batchRowHtml).join('') : '<div class="empty">상품을 찾아 입고·출고 수량을 담으면 여기에 모입니다.</div>';
+      list.querySelectorAll('[data-batch-quantity]').forEach(input => input.addEventListener('change', () => updateBatchQuantity(Number(input.dataset.batchQuantity), input.value)));
+      list.querySelectorAll('[data-batch-remove]').forEach(button => button.addEventListener('click', () => removeBatchItem(Number(button.dataset.batchRemove))));
+      el('reviewBatchButton').disabled = !state.batch.length || locked || otherWrite || state.lookingUp;
+      el('batchReview').classList.toggle('hidden', !state.reviewingBatch);
+      el('reviewList').innerHTML = state.batch.map(reviewRowHtml).join('');
+      el('reviewWarning').textContent = invalid.length ? '출고 후 재고가 음수이거나 수량이 올바르지 않은 상품이 있어 반영할 수 없습니다.' : '';
+      el('reviewWarning').classList.toggle('hidden', !invalid.length);
+      el('confirmBatchButton').disabled = !state.batch.length || invalid.length > 0 || locked || otherWrite || state.lookingUp;
+      el('cancelBatchReview').disabled = locked;
+      ['quantity','memo','submitButton','changeLocationButton','scanToBatch','confirmOperationChange','cancelOperationChange','cameraButton','homeButton','inventorySearch','locationFilter','statusFilter','inventorySort','groupByLocation','loadMoreInventory'].forEach(id => el(id).disabled = locked);
+      ['createStockButton','confirmCreateStock'].forEach(id => el(id).disabled = locked || state.creatingStock);
+      el('search').disabled = locked || state.lookingUp;
+      document.querySelectorAll('.action[data-operation]').forEach(button => button.disabled = locked);
+      document.querySelectorAll('#results button[data-identity],#inventoryList [data-identity]').forEach(control => {if ('disabled' in control) control.disabled = locked;control.setAttribute('aria-disabled', locked ? 'true' : 'false');if (control.tagName === 'TR') control.tabIndex = locked ? -1 : 0});
+    }
+    function updateBatchQuantity(index, value){
+      if (state.submitting) return;
+      const quantity = Number(value), item = state.batch[index];
+      if (!item || String(value).trim() === '' || !Number.isInteger(quantity)) {showStatus('수량은 정수로 입력해 주세요.', 'error');renderBatch();return}
+      const updated = {...item, quantity}, validation = validateBatchItem(updated);
+      if (validation.error && calculateBatchAfter(updated) >= 0) {showStatus(validation.error, 'error');renderBatch();return}
+      state.batch = state.batch.map((entry, itemIndex) => itemIndex === index ? updated : entry);persistBatch();renderBatch();
+    }
+    function removeBatchItem(index){if (state.submitting) return;state.batch = state.batch.filter((item, itemIndex) => itemIndex !== index);if (!state.batch.length) state.reviewingBatch = false;persistBatch();renderBatch();focusScan()}
+    function openBatchReview(){if (!state.batch.length || state.submitting) return;state.reviewingBatch = true;renderBatch();el('batchReview').scrollIntoView({block:'nearest', behavior:'smooth'})}
+    function callInventoryOperation(payload){return callServer('submitInventoryOperation', payload)}
+    function confirmBatch(){
+      if (state.submitting || busy() || state.creatingStock || state.lookingUp || !state.batch.length) return;
+      const invalid = state.batch.find(item => validateBatchItem(item).error);
+      if (invalid) {showStatus(validateBatchItem(invalid).error, 'error');renderBatch();return}
+      state.submitting = true;renderBatch();showStatus('작업 목록을 순서대로 반영하고 있습니다. 화면을 닫지 마세요.', 'warn');
+      const warnings = [], snapshot = state.batch.slice();
+      runBatchSequential(snapshot, callInventoryOperation, (item, result) => {
+        const after = verifiedAfterStock(result);
+        if (result && result.alreadyApplied) warnings.push((item.productName || item.productCode) + ' · 이미 반영된 요청 · ' + item.requestId);
+        /* 검증된 응답만 화면 수량에 반영한다. 검증되지 않았으면 이력은 기록된 것이라 다시 넣지 않도록 알리고 장부를 다시 받는다. */
+        if (after == null) {warnings.push((item.productName || item.productCode) + ' · 현재고 검증 필요(이력은 기록됨, 다시 넣지 마세요) · ' + item.requestId);state.stale = true}
+        else {state.data = {...state.data, products:withStock(products(), item.productCode, after)};rememberChange('stock', item.productCode, after)}
+      }).then(outcome => {
+        state.batch = outcome.remaining;persistBatch();state.submitting = false;state.reviewingBatch = Boolean(outcome.failed);
+        const completed = outcome.completed.length, box = el('batchResult');
+        if (outcome.failed) {
+          const message = errorText(outcome.error, '재고 작업에 실패했습니다.');
+          box.textContent = '성공 ' + completed.toLocaleString('ko-KR') + '건 · 실패 지점에서 중단' + (warnings.length ? '\n' + warnings.join('\n') : '') + '\n' + message + '\n실패·미처리 상품은 목록에 남아 있습니다.';
+          box.className = 'result-box warn';showStatus(message, 'error');state.stale = true;
+        } else {
+          box.textContent = '총 ' + completed.toLocaleString('ko-KR') + '건 반영 완료' + (warnings.length ? '\n' + warnings.join('\n') : '');
+          box.className = 'result-box' + (warnings.length ? ' warn' : '');
+          showStatus(warnings.length ? '반영은 끝났지만 확인이 필요한 응답이 있습니다.' : '작업 목록을 모두 반영했습니다.', warnings.length ? 'warn' : 'ok');
+        }
+        syncAfterDataChange();resetForNextScan();refreshQuietly();
+      });
+    }
+
+    function renderLocationFilter(){const select = el('locationFilter'), current = select.value || 'ALL', locations = [...new Set(products().map(itemLocation).filter(Boolean))].sort((a, b) => compareInventoryItems({location:a}, {location:b}, 'LOCATION'));select.innerHTML = '<option value="ALL">모든 구역</option><option value="UNASSIGNED">미지정</option>' + locations.map(location => '<option value="' + escapeHtml(location) + '">' + escapeHtml(location) + '</option>').join('');select.value = [...select.options].some(option => option.value === current) ? current : 'ALL'}
+    function filteredInventory(){return selectInventoryItems(products(), {query:el('inventorySearch').value, location:el('locationFilter').value, status:el('statusFilter').value, sort:el('inventorySort').value})}
+    function inventoryRowHtml(item){const missing = inventoryStatus(item) === 'MISSING';return '<tr tabindex="0" data-identity="' + escapeHtml(itemIdentity(item)) + '"><td>' + escapeHtml(itemCode(item)) + '</td><td><div class="table-name">' + escapeHtml(item.productName || itemCode(item)) + '</div><div class="table-option">' + escapeHtml(itemOption(item) || '옵션명 미등록') + '</div></td><td>' + escapeHtml(itemOptionId(item) || '-') + '</td><td>' + escapeHtml(item.barcode || '-') + '</td><td class="table-location">' + escapeHtml(missing ? '행 없음' : (itemLocation(item) || '미지정')) + '</td><td class="table-number">' + (missing ? '행 추가' : numberText(item.currentStock)) + '</td></tr>'}
+    function inventoryCardHtml(item){const missing = inventoryStatus(item) === 'MISSING', location = missing ? '행 없음' : (itemLocation(item) || '미지정'), stock = missing ? '행 추가' : numberText(item.currentStock);return '<button class="inventory-card" type="button" data-identity="' + escapeHtml(itemIdentity(item)) + '"><span class="inventory-card-head"><span><strong class="inventory-card-name">' + escapeHtml(item.productName || itemCode(item)) + '</strong><span class="inventory-card-option">' + escapeHtml(itemOption(item) || '옵션명 미등록') + '</span></span><strong class="inventory-card-stock' + (missing ? ' missing' : '') + '">' + stock + '</strong></span><span class="inventory-card-location">구역 · ' + escapeHtml(location) + '</span><span class="inventory-card-meta">SKU ' + escapeHtml(itemCode(item) || '-') + ' · 바코드 ' + escapeHtml(item.barcode || '-') + '</span></button>'}
+    function inventoryTableHtml(items){return '<div class="table-wrap"><table><thead><tr><th>SKU / 상품코드</th><th>상품 · 옵션</th><th>옵션 ID</th><th>바코드</th><th>구역</th><th>현재고</th></tr></thead><tbody>' + items.map(inventoryRowHtml).join('') + '</tbody></table></div>'}
+    /* 목록에서 상품을 골라도 화면을 맨 위로 올리지 않고, 고른 상품 카드만 보이게 한다. */
+    function bindInventoryChoices(){el('inventoryList').querySelectorAll('[data-identity]').forEach(target => {const choose = () => {if (state.submitting) return;const item = products().find(product => itemIdentity(product) === target.dataset.identity);if (!item) return;if (item.blockCode === 'MISSING_STOCK_ROW') {showMissingStock(item);el('missingStock').scrollIntoView({block:'nearest'})} else selectProduct(item)};target.addEventListener('click', choose);if (target.tagName === 'TR') target.addEventListener('keydown', event => {if (event.key === 'Enter') choose()})})}
+    function renderInventory(){
+      const items = filteredInventory(), body = el('inventoryBody'), cards = el('inventoryCards'), groups = el('inventoryGroups'), table = el('inventoryTable'), more = el('loadMoreInventory'), grouped = el('groupByLocation').checked;
+      if (state.loadingInventory && !products().length) {more.classList.add('hidden');groups.classList.add('hidden');table.classList.remove('hidden');cards.classList.remove('hidden');el('inventoryCount').textContent = '목록을 불러오는 중';body.innerHTML = '<tr><td colspan="6"><div class="empty">전체 목록을 불러오는 중입니다. 바코드 조회는 지금 바로 쓸 수 있습니다.</div></td></tr>';cards.innerHTML = '<div class="empty">전체 목록을 불러오는 중입니다. 바코드 조회는 지금 바로 쓸 수 있습니다.</div>';return}
+      const visibleItems = items.slice(0, state.inventoryLimit);
+      el('inventoryCount').textContent = '표시 ' + visibleItems.length.toLocaleString('ko-KR') + '개 / 검색결과 ' + items.length.toLocaleString('ko-KR') + '개 · 전체 ' + products().length.toLocaleString('ko-KR') + '개';
+      more.classList.toggle('hidden', visibleItems.length >= items.length);table.classList.toggle('hidden', grouped);cards.classList.toggle('hidden', grouped);groups.classList.toggle('hidden', !grouped);
+      if (!items.length) {body.innerHTML = '<tr><td colspan="6"><div class="empty">조건에 맞는 재고가 없습니다.</div></td></tr>';cards.innerHTML = '<div class="empty">조건에 맞는 재고가 없습니다.</div>';groups.innerHTML = grouped ? '<div class="empty">조건에 맞는 재고가 없습니다.</div>' : '';return}
+      body.innerHTML = visibleItems.map(inventoryRowHtml).join('');cards.innerHTML = visibleItems.map(inventoryCardHtml).join('');
+      groups.innerHTML = grouped ? groupInventoryItems(visibleItems).map(group => '<section class="inventory-group"><header class="inventory-group-head"><h3>' + escapeHtml(group.label) + '</h3><span class="inventory-group-summary">상품 ' + group.itemCount.toLocaleString('ko-KR') + '개 · 재고 합계 ' + group.stockTotal.toLocaleString('ko-KR') + '개</span></header>' + inventoryTableHtml(group.items) + '<div class="inventory-cards">' + group.items.map(inventoryCardHtml).join('') + '</div></section>').join('') : '';
+      bindInventoryChoices();
+    }
+
+    /* ---------- 휴대폰 카메라 ---------- */
+    const camera = {stream:null, timer:0, decoder:null, last:'', accepted:'', acceptedAt:0, working:false, liveFailed:false};
+    function cameraMessage(text){el('cameraMessage').textContent = text || '';el('cameraMessage').classList.toggle('hidden', !text)}
+    /* Apps Script 웹앱 프레임은 2026년 초부터 실시간 카메라를 막는다(구글 안내: 권한 정책 위반).
+       브라우저가 정책을 알려 주면(안드로이드 크롬 등) 미리 보고, 알 수 없으면 막히지 않은 것으로 보고 한 번 열어 본다. */
+    function cameraPolicyBlocked(doc){
+      const policy = doc && (doc.permissionsPolicy || doc.featurePolicy);
+      if (!policy || typeof policy.allowsFeature !== 'function') return false;
+      try {return !policy.allowsFeature('camera')} catch (error) {return false}
+    }
+    /* 텔레그램·카카오톡 같은 앱 안 브라우저: 카메라 창을 그 앱이 띄워 검게 나오거나 열리지 않는다(2026-11-18 아이폰 텔레그램). */
+    function inAppBrowser(ua){
+      const text = String(ua || '');
+      if (/Telegram|KAKAOTALK|NAVER\(inapp|Instagram|FBAN|FBAV|Line\//i.test(text)) return true;
+      if (/iPhone|iPad|iPod/.test(text)) return !/Safari\//.test(text);
+      return /Android/.test(text) && /; wv\)/.test(text);
+    }
+    /* 「카메라로 찍기」의 길: 앱 안 브라우저면 Safari·브라우저로 열라는 안내, 실시간 카메라를 쓸 수 없는 화면·기기이거나 한 번 실패했으면 곧바로 휴대폰 기본 카메라(사진 한 장)로 간다. */
+    function cameraEntryMode(env){
+      if (env && env.inApp) return 'inapp';
+      return env && env.hasLiveApi && !env.policyBlocked && !env.liveFailed ? 'live' : 'photo';
+    }
+    function currentCameraEntryMode(){
+      return cameraEntryMode({inApp:inAppBrowser(navigator.userAgent), hasLiveApi:Boolean(navigator.mediaDevices && navigator.mediaDevices.getUserMedia), policyBlocked:cameraPolicyBlocked(document), liveFailed:camera.liveFailed});
+    }
+    function showPhotoTools(text){
+      el('cameraPanel').classList.remove('hidden');el('cameraVideo').classList.add('hidden');cameraMessage(text);
+    }
+    function showInAppGuide(){
+      showPhotoTools('텔레그램·카카오톡 같은 앱 안 화면에서는 카메라가 열리지 않거나 검게 나올 수 있습니다. 오른쪽 위 메뉴(… 또는 ⋮)에서 «Safari로 열기»(안드로이드는 «브라우저로 열기»)를 누른 뒤 다시 찍어 주세요. 「사진 보관함에서 고르기」로 미리 찍어 둔 사진을 골라도 됩니다.');
+    }
+    /* 사진 창을 열기 전에 실시간 카메라를 놓는다(켜 둔 채 열면 휴대폰 카메라 창이 검게 나온다). 이 화면에서는 이후 사진으로 간다. */
+    function releaseLiveCamera(){
+      if (!camera.stream) return;
+      camera.liveFailed = true;
+      stopCamera();
+      el('cameraPanel').classList.remove('hidden');el('cameraVideo').classList.add('hidden');
+    }
+    /* 버튼을 누른 그 순간에 바로 연다(휴대폰은 사용자가 누른 직후에만 파일·카메라 창을 열어 준다). */
+    function openPhotoCapture(){
+      releaseLiveCamera();
+      cameraMessage('휴대폰 카메라로 바코드를 한 장 찍어 주세요. 바코드가 화면에 크게, 흔들리지 않게 나오면 잘 읽힙니다.');
+      el('photoInput').click();
+    }
+    function openPhotoLibrary(){
+      releaseLiveCamera();
+      cameraMessage('바코드가 크게 나온 사진을 골라 주세요.');
+      el('libraryInput').click();
+    }
+    /* 실시간 카메라가 켜졌는데 영상 크기가 0이면(검은 화면) 실패로 보고 사진으로 넘긴다. */
+    function liveVideoBlank(width, height){
+      return !(width > 0 && height > 0);
+    }
+    function checkLiveVideo(stream){
+      const video = el('cameraVideo');
+      if (!stream || camera.stream !== stream || !liveVideoBlank(video.videoWidth, video.videoHeight)) return;
+      releaseLiveCamera();
+      cameraMessage('이 휴대폰에서는 실시간 카메라 화면이 나오지 않습니다. 「사진으로 찍기」나 「사진 보관함에서 고르기」를 써 주세요. 다음부터는 「카메라로 찍기」도 바로 사진으로 갑니다.');
+    }
+    function loadBarcodeLibrary(){
+      if (window.ZXing) return Promise.resolve(window.ZXing);
+      if (loadBarcodeLibrary.pending) return loadBarcodeLibrary.pending;
+      loadBarcodeLibrary.pending = new Promise((resolve, reject) => {
+        const script = document.createElement('script');
+        script.src = BARCODE_LIBRARY.url;script.integrity = BARCODE_LIBRARY.integrity;script.crossOrigin = 'anonymous';
+        script.onload = () => window.ZXing ? resolve(window.ZXing) : reject(new Error('바코드 인식 도구를 불러오지 못했습니다.'));
+        script.onerror = () => {loadBarcodeLibrary.pending = null;reject(new Error('바코드 인식 도구를 불러오지 못했습니다.'))};
+        document.head.appendChild(script);
+      });
+      return loadBarcodeLibrary.pending;
+    }
+    /* 브라우저 기본 인식기(안드로이드 크롬)를 먼저 쓰고, 없으면(아이폰 사파리) 인식 도구를 불러온다. */
+    async function getDecoder(){
+      if (camera.decoder) return camera.decoder;
+      const wanted = ['code_128','ean_13','ean_8','code_39','upc_a','upc_e','itf','qr_code'];
+      if ('BarcodeDetector' in window) {
+        try {
+          const supported = await window.BarcodeDetector.getSupportedFormats(), formats = wanted.filter(format => supported.includes(format));
+          if (formats.includes('code_128') || formats.includes('ean_13')) {
+            const detector = new window.BarcodeDetector({formats});
+            camera.decoder = {kind:'native', detect:async source => (await detector.detect(source)).map(code => String(code.rawValue || ''))};
+            return camera.decoder;
+          }
+        } catch (error) {}
+      }
+      const ZXing = await loadBarcodeLibrary(), hints = new Map(), canvas = document.createElement('canvas'), reader = new ZXing.MultiFormatReader();
+      hints.set(ZXing.DecodeHintType.POSSIBLE_FORMATS, [ZXing.BarcodeFormat.CODE_128, ZXing.BarcodeFormat.EAN_13, ZXing.BarcodeFormat.EAN_8, ZXing.BarcodeFormat.CODE_39, ZXing.BarcodeFormat.UPC_A, ZXing.BarcodeFormat.ITF, ZXing.BarcodeFormat.QR_CODE]);
+      hints.set(ZXing.DecodeHintType.TRY_HARDER, true);
+      /* 사진은 화소가 커서 1280으로 줄이면 가는 막대가 뭉개질 수 있다 → 못 읽으면 더 큰 크기로 한 번 더 본다. */
+      camera.decoder = {kind:'library', detect:async (source, sizes) => {
+        const width = source.videoWidth || source.naturalWidth || source.width, height = source.videoHeight || source.naturalHeight || source.height;
+        if (!width || !height) return [];
+        for (const size of sizes && sizes.length ? sizes : [1280]) {
+          const scale = Math.min(1, size / Math.max(width, height));
+          canvas.width = Math.round(width * scale);canvas.height = Math.round(height * scale);
+          canvas.getContext('2d', {willReadFrequently:true}).drawImage(source, 0, 0, canvas.width, canvas.height);
+          try {return [String(reader.decode(new ZXing.BinaryBitmap(new ZXing.HybridBinarizer(new ZXing.HTMLCanvasElementLuminanceSource(canvas))), hints).getText() || '')]} catch (error) {}
+          if (scale === 1) break;
+        }
+        return [];
+      }};
+      return camera.decoder;
+    }
+    /* 잘못 읽은 값으로 저장되지 않게: 같은 값을 연속 두 번 읽고, 장부 상품(또는 구역 라벨)과 정확히 맞을 때만 받는다. */
+    function acceptCameraValue(rawValue, single){
+      const value = normalizeScannerQuery(rawValue);
+      if (!value) return false;
+      const known = Boolean(parseZoneLabel(value, false)) || resolveScan(products(), value).type !== 'none';
+      if (!single) {
+        if (camera.last !== value) {camera.last = value;return false}
+        if (camera.accepted === value && Date.now() - camera.acceptedAt < 2500) return false;
+        if (!known) {if (Date.now() - camera.acceptedAt > 2500) {camera.accepted = value;camera.acceptedAt = Date.now();feedback(false);showStatus('장부에 없는 바코드입니다: ' + value + '\n다시 찍거나 직접 입력해 주세요.', 'warn')}return false}
+      }
+      camera.accepted = value;camera.acceptedAt = Date.now();camera.last = '';
+      if (!el('cameraContinuous').checked) stopCamera();
+      handleScan(value);
+      return true;
+    }
+    function scanLoop(){
+      camera.timer = window.setTimeout(async () => {
+        if (!camera.stream) return;
+        const video = el('cameraVideo');
+        if (!camera.working && video.readyState >= 2 && !state.lookingUp && !state.submitting) {
+          camera.working = true;
+          try {const values = await camera.decoder.detect(video);if (values.length) acceptCameraValue(values[0], false);else camera.last = ''} catch (error) {}
+          camera.working = false;
+        }
+        if (camera.stream) scanLoop();
+      }, 180);
+    }
+    async function startCamera(){
+      if (camera.stream) return;
+      cameraMessage('');
+      if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {camera.liveFailed = true;cameraMessage('이 브라우저에서는 실시간 카메라를 열 수 없습니다. 「사진으로 찍기」를 쓰거나 직접 입력해 주세요.');el('cameraPanel').classList.remove('hidden');el('cameraVideo').classList.add('hidden');return}
+      try {
+        el('cameraButton').disabled = true;
+        try {
+          camera.stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:{ideal:'environment'}, width:{ideal:1280}, height:{ideal:720}}, audio:false});
+        } catch (error) {
+          /* 프레임 불허·권한 거절·카메라 없음: 이 화면을 쓰는 동안은 「카메라로 찍기」가 곧바로 사진 한 장으로 간다. */
+          camera.liveFailed = true;
+          stopCamera();
+          el('cameraPanel').classList.remove('hidden');el('cameraVideo').classList.add('hidden');
+          cameraMessage('이 화면에서는 실시간 카메라 창이 열리지 않습니다(' + (error && error.name ? error.name : '권한 또는 기기 문제') + '). 「사진으로 찍기」를 누르면 휴대폰 카메라로 한 장 찍어 읽습니다. 다음부터는 「카메라로 찍기」도 바로 사진으로 갑니다. 바코드 숫자를 직접 입력해도 됩니다.');
+          return;
+        }
+        await getDecoder();
+        const video = el('cameraVideo');video.classList.remove('hidden');video.srcObject = camera.stream;await video.play();
+        el('cameraPanel').classList.remove('hidden');el('cameraButton').textContent = '카메라 닫기';
+        const track = camera.stream.getVideoTracks()[0], capabilities = track && track.getCapabilities ? track.getCapabilities() : {};
+        el('torchButton').classList.toggle('hidden', !capabilities.torch);el('torchButton').dataset.on = '';
+        camera.last = '';scanLoop();
+        const opened = camera.stream;window.setTimeout(() => checkLiveVideo(opened), 1500);
+      } catch (error) {
+        stopCamera();
+        el('cameraPanel').classList.remove('hidden');el('cameraVideo').classList.add('hidden');
+        cameraMessage('카메라 화면을 준비하지 못했습니다(' + (error && error.name ? error.name : '바코드 인식 도구 문제') + '). 「사진으로 찍기」를 쓰거나 바코드 숫자를 직접 입력해 주세요.');
+      } finally {el('cameraButton').disabled = false}
+    }
+    function stopCamera(){
+      window.clearTimeout(camera.timer);
+      if (camera.stream) camera.stream.getTracks().forEach(track => track.stop());
+      camera.stream = null;el('cameraVideo').srcObject = null;
+      el('cameraPanel').classList.add('hidden');el('cameraButton').textContent = '카메라로 찍기';
+    }
+    function toggleTorch(){
+      const track = camera.stream && camera.stream.getVideoTracks()[0], button = el('torchButton');
+      if (!track) return;
+      const on = !button.dataset.on;
+      track.applyConstraints({advanced:[{torch:on}]}).then(() => {button.dataset.on = on ? '1' : '';button.textContent = on ? '손전등 끄기' : '손전등'}).catch(() => {});
+    }
+    /* 실시간 카메라가 막힌 기기용: 기본 카메라로 사진을 찍어 그 사진에서 바코드를 읽는다. */
+    async function readPhoto(file){
+      if (!file) return;
+      cameraMessage('사진에서 바코드를 읽는 중입니다.');
+      const url = URL.createObjectURL(file);
+      try {
+        const decoder = await getDecoder(), image = new Image();
+        await new Promise((resolve, reject) => {image.onload = resolve;image.onerror = reject;image.src = url});
+        const values = await decoder.detect(image, [1280, 2400]);
+        if (values.length && values[0]) {cameraMessage('');acceptCameraValue(values[0], true)}
+        else {feedback(false);cameraMessage('사진에서 바코드를 찾지 못했습니다. 바코드가 크게 나오게 다시 찍거나 숫자를 직접 입력해 주세요.')}
+      } catch (error) {feedback(false);cameraMessage('사진을 읽지 못했습니다. 바코드 숫자를 직접 입력해 주세요.')}
+      finally {URL.revokeObjectURL(url);el('photoInput').value = '';el('libraryInput').value = ''}
+    }
+
+    /* ---------- 버튼 연결 ---------- */
+    el('search').addEventListener('input', event => {
+      const corrected = normalizeScannerQuery(event.target.value);
+      if (corrected !== event.target.value) event.target.value = corrected;
+      if (state.lookingUp) return;
+      const query = event.target.value;
+      if (!normalize(query) || state.screen === 'count' && !state.count) {hideResults();return}
+      renderResultItems(localMatches(query), '검색 후보가 없습니다. Enter를 누르면 장부에서 정확히 찾습니다.');
+    });
+    el('search').addEventListener('keydown', event => {if (event.key !== 'Enter') return;event.preventDefault();handleScan(el('search').value)});
+    el('cameraButton').addEventListener('click', () => {
+      if (camera.stream) {stopCamera();cameraMessage('');return}
+      if (currentCameraEntryMode() === 'inapp') {showInAppGuide();return}
+      if (currentCameraEntryMode() === 'photo') {openPhotoCapture();return}
+      if (!el('cameraPanel').classList.contains('hidden')) {stopCamera();cameraMessage('');return}
+      startCamera();
+    });
+    el('closeCameraButton').addEventListener('click', () => {stopCamera();cameraMessage('')});
+    el('torchButton').addEventListener('click', toggleTorch);
+    el('photoButton').addEventListener('click', openPhotoCapture);
+    el('libraryButton').addEventListener('click', openPhotoLibrary);
+    el('photoInput').addEventListener('change', event => readPhoto(event.target.files && event.target.files[0]));
+    el('libraryInput').addEventListener('change', event => readPhoto(event.target.files && event.target.files[0]));
+    el('homeButton').addEventListener('click', () => {if (!state.submitting) showScreen('home')});
+    el('goZone').addEventListener('click', () => showScreen('zone'));
+    el('goCount').addEventListener('click', () => showScreen('count'));
+    el('goFind').addEventListener('click', () => showScreen('find'));
+    el('pickerClose').addEventListener('click', closeZonePicker);
+    el('pickerBack').addEventListener('click', () => {if (state.picker) {state.picker.letter = '';renderPicker()}});
+    el('pickerClear').addEventListener('click', () => pickZone(''));
+    el('changeZoneTarget').addEventListener('click', () => openZonePicker('넣을 구역 고르기', setZoneTarget, false));
+    el('zoneConfirmMove').addEventListener('click', () => {const pending = state.zonePending;if (!pending) return;state.zonePending = null;saveLocation(pending.item, state.zoneTarget);showStatus((pending.item.productName || itemCode(pending.item)) + '\n' + pending.from + ' → ' + state.zoneTarget + ' 구역으로 옮겼습니다.', 'ok');renderZone();focusScan()});
+    el('zoneConfirmKeep').addEventListener('click', () => {state.zonePending = null;renderZone();focusScan()});
+    el('unassignedMore').addEventListener('click', () => {state.unassignedLimit += 40;renderZone()});
+    el('pickCountZone').addEventListener('click', () => openZonePicker('조사할 구역 고르기', startCount, false));
+    el('reviewCountButton').addEventListener('click', openCountReview);
+    el('confirmCountButton').addEventListener('click', confirmCount);
+    el('cancelCountReview').addEventListener('click', () => {if (!state.submitting) {state.countReviewing = false;renderCount()}});
+    el('finishCountButton').addEventListener('click', finishCount);
+    el('quitCountButton').addEventListener('click', () => {if (!state.submitting) el('countQuit').classList.remove('hidden')});
+    el('cancelQuitCount').addEventListener('click', () => el('countQuit').classList.add('hidden'));
+    el('confirmQuitCount').addEventListener('click', () => {if (state.submitting) return;const zone = state.count ? state.count.zone : '';state.count = null;state.countExtra = null;state.countReviewing = false;persistCount();el('countQuit').classList.add('hidden');showStatus(zone + ' 구역 조사를 그만두었습니다. 장부는 바뀌지 않았습니다.', 'warn');renderCount()});
+    el('countExtraMove').addEventListener('click', () => {const item = state.countExtra;if (!item || !state.count) return;state.countExtra = null;saveLocation(item, state.count.zone);state.count = addCountRow(state.count, {...item, location:state.count.zone});state.count = {...state.count, rows:state.count.rows.map(row => row.id === itemIdentity(item) ? {...row, extra:false} : row)};state.countFocus = itemIdentity(item);persistCount();renderCount()});
+    el('countExtraKeep').addEventListener('click', () => {const item = state.countExtra;if (!item || !state.count) return;state.countExtra = null;state.count = addCountRow(state.count, item);state.countFocus = itemIdentity(item);persistCount();renderCount()});
+    el('countExtraCancel').addEventListener('click', () => {state.countExtra = null;renderCount();focusScan()});
+    document.querySelectorAll('.action[data-operation]').forEach(button => button.addEventListener('click', () => openOperationForm(button.dataset.operation)));
+    el('changeLocationButton').addEventListener('click', () => {const item = state.selected;if (!item || state.submitting) return;openZonePicker('구역 바꾸기 · 지금 ' + zoneText(itemLocation(item)), zone => {if (zone === itemLocation(item)) return;saveLocation(item, zone);showStatus((item.productName || itemCode(item)) + '\n구역을 ' + zoneText(zone) + '(으)로 저장합니다.', 'ok')}, Boolean(itemLocation(item)))});
+    el('confirmOperationChange').addEventListener('click', () => {const next = state.pendingOperation;if (!next) return;setOperation(next, true);openOperationForm(next)});
+    el('cancelOperationChange').addEventListener('click', () => {if (state.submitting) return;state.pendingOperation = '';el('operationChangeConfirm').classList.add('hidden')});
+    el('quantity').addEventListener('input', updatePreview);
+    el('quantity').addEventListener('keydown', event => {if (event.key !== 'Enter') return;event.preventDefault();submitOperation()});
+    el('memo').addEventListener('keydown', event => {if (event.key !== 'Enter') return;event.preventDefault();submitOperation()});
+    el('createStockButton').addEventListener('click', () => {if (!state.creatingStock) el('createStockConfirm').classList.remove('hidden')});
+    el('cancelCreateStock').addEventListener('click', () => el('createStockConfirm').classList.add('hidden'));
+    el('confirmCreateStock').addEventListener('click', createStockRow);
+    el('submitButton').addEventListener('click', submitOperation);
+    el('reviewBatchButton').addEventListener('click', openBatchReview);
+    el('confirmBatchButton').addEventListener('click', confirmBatch);
+    el('cancelBatchReview').addEventListener('click', () => {if (!state.submitting) {state.reviewingBatch = false;renderBatch();focusScan()}});
+    el('inventorySearch').addEventListener('input', () => {state.inventoryLimit = 120;renderInventory()});
+    ['locationFilter','statusFilter','inventorySort','groupByLocation'].forEach(id => el(id).addEventListener('change', () => {state.inventoryLimit = 120;renderInventory()}));
+    el('loadMoreInventory').addEventListener('click', () => {state.inventoryLimit += 120;renderInventory()});
+    /* 구역 고르기가 떠 있어도 스캐너(키보드 입력형)로 선반 구역 라벨을 읽을 수 있게 한다. */
+    let pickerKeys = '';
+    document.addEventListener('keydown', event => {
+      if (!state.picker || event.target === el('search')) return;
+      if (event.key === 'Enter') {const value = pickerKeys;pickerKeys = '';if (value) handleScan(value);return}
+      if (event.key === 'Escape') {pickerKeys = '';closeZonePicker();return}
+      if (event.key.length === 1) pickerKeys = (pickerKeys + event.key).slice(-40);
+    });
+    window.addEventListener('beforeunload', event => {if (!busy()) return;event.preventDefault();event.returnValue = ''});
+    document.addEventListener('visibilitychange', () => {if (document.hidden) stopCamera()});
+    showScreen('home');loadInventoryData();
+  </script>
+</body>
+</html>
